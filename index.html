@@ -1,0 +1,1907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Finanzas</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ══════════════════════════════════════
+   GLOBAL / TOKENS
+══════════════════════════════════════ */
+:root {
+  --bg:       #0a0e1a;
+  --surface:  #111827;
+  --surface2: #1a2235;
+  --border:   #1e2d45;
+  --accent:   #f59e0b;
+  --accent2:  #06b6d4;
+  --accent3:  #10b981;
+  --accent4:  #8b5cf6;
+  --text:     #f1f5f9;
+  --muted:    #64748b;
+  --danger:   #ef4444;
+  --income:   #10b981;
+  --expense:  #ef4444;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Roboto',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';
+  position:fixed;top:-50%;left:-50%;width:200%;height:200%;
+  background:
+    radial-gradient(ellipse at 20% 20%,rgba(245,158,11,.04) 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 80%,rgba(6,182,212,.04)  0%,transparent 50%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── TOPBAR ── */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(10,14,26,.92);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 2rem;
+  height:56px;
+}
+.topbar-left{display:flex;align-items:center;gap:2rem;}
+.brand{
+  font-size:1.1rem;font-weight:900;
+  letter-spacing:-.02em;white-space:nowrap;
+}
+.brand span{color:var(--accent);}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:0.25rem;}
+.tab{
+  padding:.45rem 1.1rem;
+  border-radius:8px;
+  font-size:.82rem;font-weight:600;
+  cursor:pointer;border:none;
+  background:transparent;color:var(--muted);
+  transition:background .15s,color .15s;
+  font-family:'Roboto',sans-serif;
+}
+.tab:hover{background:var(--surface2);color:var(--text);}
+.tab.active{background:var(--surface2);color:var(--accent);border:1px solid var(--border);}
+
+.topbar-right{display:flex;align-items:center;gap:.7rem;}
+.year-badge{
+  background:var(--surface);border:1px solid var(--border);
+  padding:.35rem 1rem;border-radius:999px;
+  font-size:.8rem;font-weight:600;color:var(--accent);
+}
+
+/* ── PAGES ── */
+.page{display:none;position:relative;z-index:1;}
+.page.active{display:block;}
+
+/* ── CONTAINER ── */
+.container{max-width:1400px;margin:0 auto;padding:2rem;}
+
+/* ══════════════════════════════════════
+   SHARED COMPONENTS
+══════════════════════════════════════ */
+.panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:1.5rem;
+}
+.panel-title{
+  font-size:1rem;font-weight:700;color:var(--text);
+  margin-bottom:1.2rem;
+  display:flex;align-items:center;gap:.5rem;
+}
+.panel-title::before{
+  content:'';width:4px;height:1em;
+  background:var(--accent);border-radius:2px;
+}
+.panel-header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:1.2rem;
+}
+.bar-track{height:6px;background:var(--surface2);border-radius:999px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:999px;transition:width .8s cubic-bezier(.4,0,.2,1);}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(14px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.panel,.card,.kpi{animation:fadeUp .45s ease both;}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--surface2);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
+
+/* ── GHOST BUTTON ── */
+.ghost-btn{
+  background:transparent;border:1px solid var(--border);
+  color:var(--muted);padding:.4rem .9rem;border-radius:999px;
+  font-size:.76rem;cursor:pointer;font-family:'Roboto',sans-serif;
+  transition:border-color .2s,color .2s;
+}
+.ghost-btn:hover{border-color:var(--danger);color:var(--danger);}
+
+/* ── FILTER PILLS ── */
+.pill{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;padding:.3rem .75rem;
+  font-family:'Roboto',sans-serif;font-size:.75rem;font-weight:600;
+  cursor:pointer;color:var(--muted);transition:all .15s;
+}
+.pill.active{background:var(--accent);color:#000;border-color:var(--accent);}
+
+/* ── SAVE INDICATOR ── */
+#saveIndicator{
+  position:fixed;bottom:1.5rem;right:1.5rem;
+  background:var(--accent3);color:#fff;
+  padding:.5rem 1.1rem;border-radius:999px;
+  font-size:.78rem;font-weight:600;
+  opacity:0;transition:opacity .4s;
+  z-index:9999;pointer-events:none;
+  box-shadow:0 4px 12px rgba(16,185,129,.4);
+}
+
+/* ══════════════════════════════════════
+   AHORROS
+══════════════════════════════════════ */
+.summary-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(195px,1fr));
+  gap:1rem;margin-bottom:2rem;
+}
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:1.4rem;
+  position:relative;overflow:hidden;
+  transition:border-color .2s,transform .2s;
+}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--card-color,var(--accent));
+}
+.card-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.6rem;}
+.card-value{font-size:1.6rem;font-weight:800;color:var(--text);}
+.card-sub{font-size:.75rem;color:var(--muted);margin-top:.3rem;}
+.card-growth{
+  display:inline-flex;align-items:center;gap:.3rem;
+  font-size:.8rem;font-weight:600;padding:.2rem .6rem;
+  border-radius:999px;margin-top:.5rem;
+}
+.growth-up{background:rgba(16,185,129,.15);color:var(--accent3);}
+.growth-down{background:rgba(239,68,68,.15);color:var(--danger);}
+
+.sav-main{display:grid;grid-template-columns:1fr 380px;gap:1.5rem;margin-bottom:2rem;}
+.sav-bottom{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+
+/* ahorros table */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.82rem;}
+thead th{
+  text-align:right;padding:.6rem .8rem;
+  font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted);border-bottom:1px solid var(--border);
+}
+thead th:first-child{text-align:left;}
+tbody tr{border-bottom:1px solid rgba(30,45,69,.5);transition:background .15s;cursor:pointer;}
+tbody tr:hover{background:var(--surface2);}
+tbody tr.active-row{background:rgba(245,158,11,.07);}
+td{padding:.7rem .8rem;text-align:right;color:var(--text);}
+td:first-child{text-align:left;font-weight:600;color:var(--muted);}
+td.total-cell{font-weight:700;color:var(--accent);}
+td.pos{color:var(--accent3);}td.neg{color:var(--danger);}
+td input{
+  background:transparent;border:none;border-bottom:1px solid var(--border);
+  color:var(--text);font-family:'Roboto',sans-serif;font-size:.82rem;
+  width:90px;text-align:right;padding:.1rem .2rem;outline:none;transition:border-color .2s;
+}
+td input:focus{border-color:var(--accent);color:var(--accent);}
+td input::placeholder{color:var(--border);}
+
+/* fintech bars */
+.fintech-list{display:flex;flex-direction:column;gap:.8rem;}
+.fintech-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;}
+.fintech-name{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:.85rem;}
+.fintech-dot{width:8px;height:8px;border-radius:50%;}
+.fintech-amount{font-size:.82rem;color:var(--muted);}
+.fintech-pct{font-size:.75rem;font-weight:600;}
+.chart-area{height:220px;position:relative;}
+.insight-box{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:1rem;
+  display:flex;flex-direction:column;gap:.3rem;
+}
+.insight-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+.insight-value{font-size:1.3rem;font-weight:800;}
+.insight-sub{font-size:.75rem;color:var(--muted);}
+.insights-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
+
+.tag{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.tag-bbva{background:rgba(0,68,129,.3);color:#60a5fa;}
+.tag-nu{background:rgba(130,10,209,.3);color:#c084fc;}
+.tag-didi{background:rgba(255,102,0,.3);color:#fb923c;}
+.tag-mifel{background:rgba(0,61,138,.3);color:#93c5fd;}
+
+/* ══════════════════════════════════════
+   GASTOS
+══════════════════════════════════════ */
+.upload-btn{
+  display:inline-flex;align-items:center;gap:.5rem;
+  background:var(--accent);color:#000;border:none;
+  border-radius:8px;padding:.45rem 1.1rem;
+  font-family:'Roboto',sans-serif;font-size:.8rem;font-weight:700;
+  cursor:pointer;transition:opacity .2s;white-space:nowrap;
+}
+.upload-btn:hover{opacity:.85;}
+#fileInput{display:none;}
+
+.month-pill{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;padding:.35rem .9rem;
+  font-size:.78rem;font-weight:600;color:var(--accent2);
+}
+
+/* KPI cards (gastos) */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.kpi{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:1.3rem 1.5rem;position:relative;overflow:hidden;
+}
+.kpi::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:var(--kpi-color,var(--accent));
+}
+.kpi-icon{position:absolute;top:.9rem;right:1.1rem;font-size:1.5rem;opacity:.12;}
+.kpi-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.5rem;}
+.kpi-value{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;line-height:1;}
+.kpi-sub{font-size:.74rem;color:var(--muted);margin-top:.4rem;}
+
+.gas-main{display:grid;grid-template-columns:1fr 320px;gap:1.5rem;margin-bottom:1.5rem;}
+.gas-bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;}
+.chart-wrap{position:relative;height:230px;}
+
+/* cat bars gastos */
+.cat-list{display:flex;flex-direction:column;gap:.9rem;}
+.cat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem;}
+.cat-name{font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:.4rem;}
+.cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.cat-amounts{display:flex;align-items:center;gap:.6rem;font-size:.78rem;}
+.cat-total{font-weight:700;}
+.cat-pct{color:var(--muted);}
+
+/* sub table */
+.sub-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.sub-table thead th{
+  text-align:left;padding:.4rem .6rem;
+  font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--muted);border-bottom:1px solid var(--border);
+}
+.sub-table thead th:last-child{text-align:right;}
+.sub-table tbody tr{border-bottom:1px solid rgba(30,45,69,.4);transition:background .15s;}
+.sub-table tbody tr:hover{background:var(--surface2);}
+.sub-table td{padding:.5rem .6rem;color:var(--text);}
+.sub-table td:last-child{text-align:right;font-weight:600;}
+
+/* account cards */
+.account-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;}
+.account-card{background:var(--surface2);border-radius:8px;padding:.9rem;border:1px solid var(--border);}
+.account-name{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.4rem;}
+.account-expense{font-size:1rem;font-weight:700;color:var(--expense);}
+.account-income{font-size:.74rem;font-weight:600;color:var(--income);margin-top:.3rem;}
+
+/* tx table */
+.tx-filters{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;}
+.tx-table-wrap{max-height:320px;overflow-y:auto;}
+.tx-table{width:100%;border-collapse:collapse;font-size:.8rem;table-layout:fixed;}
+.tx-table thead{position:sticky;top:0;background:var(--surface);z-index:1;}
+.tx-table thead th{
+  padding:.5rem .8rem;
+  font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--muted);border-bottom:1px solid var(--border);
+  text-align:left;overflow:hidden;
+}
+.tx-table thead th:nth-child(1){width:8%;}
+.tx-table thead th:nth-child(2){width:24%;}
+.tx-table thead th:nth-child(3){width:16%;}
+.tx-table thead th:nth-child(4){width:16%;}
+.tx-table thead th:nth-child(5){width:10%;text-align:center;}
+.tx-table thead th:nth-child(6){width:12%;text-align:right;}
+.tx-table thead th:nth-child(7){width:8%;text-align:center;}
+.tx-table tbody tr{border-bottom:1px solid rgba(30,45,69,.4);transition:background .15s;}
+.tx-table tbody tr:hover{background:var(--surface2);}
+.tx-table td{padding:.6rem .8rem;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tx-table td:nth-child(5){text-align:center;}
+.tx-table td:nth-child(6){text-align:right;font-weight:700;}
+.tx-table td:nth-child(7){text-align:center;}
+.badge{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.68rem;font-weight:600;}
+.badge-income{background:rgba(16,185,129,.15);color:var(--income);}
+.badge-expense{background:rgba(239,68,68,.15);color:var(--expense);}
+.tx-date{color:var(--muted);font-size:.72rem;}
+
+/* ── ACTION BUTTONS in tx rows ── */
+.tx-actions{display:flex;gap:.3rem;justify-content:center;}
+.btn-icon{
+  background:transparent;border:1px solid var(--border);
+  border-radius:6px;padding:.2rem .45rem;
+  cursor:pointer;font-size:.72rem;
+  transition:all .15s;color:var(--muted);
+}
+.btn-icon:hover.edit{border-color:var(--accent);color:var(--accent);}
+.btn-icon:hover.del{border-color:var(--danger);color:var(--danger);}
+
+/* ── MODAL ── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:9000;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:1.8rem;width:100%;max-width:460px;
+  position:relative;animation:fadeUp .25s ease;
+}
+.modal-title{
+  font-size:1rem;font-weight:700;margin-bottom:1.4rem;
+  display:flex;align-items:center;gap:.5rem;
+}
+.modal-title::before{content:'';width:4px;height:1em;background:var(--accent);border-radius:2px;}
+.modal-close{
+  position:absolute;top:1rem;right:1rem;
+  background:transparent;border:none;color:var(--muted);
+  font-size:1.1rem;cursor:pointer;padding:.2rem .5rem;border-radius:6px;
+  transition:color .15s;
+}
+.modal-close:hover{color:var(--text);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
+.form-grid.full{grid-template-columns:1fr;}
+.field{display:flex;flex-direction:column;gap:.35rem;}
+.field label{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;}
+.field input,.field select{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:7px;padding:.5rem .7rem;
+  color:var(--text);font-family:'Roboto',sans-serif;font-size:.82rem;
+  outline:none;transition:border-color .2s;
+}
+.field input:focus,.field select:focus{border-color:var(--accent);}
+.field select option{background:var(--surface);}
+.modal-actions{display:flex;gap:.7rem;justify-content:flex-end;margin-top:1.4rem;}
+.btn-primary{
+  background:var(--accent);color:#000;border:none;
+  border-radius:8px;padding:.55rem 1.3rem;
+  font-family:'Roboto',sans-serif;font-size:.82rem;font-weight:700;
+  cursor:pointer;transition:opacity .2s;
+}
+.btn-primary:hover{opacity:.85;}
+.btn-secondary{
+  background:transparent;border:1px solid var(--border);
+  color:var(--muted);border-radius:8px;padding:.55rem 1.1rem;
+  font-family:'Roboto',sans-serif;font-size:.82rem;font-weight:600;
+  cursor:pointer;transition:all .15s;
+}
+.btn-secondary:hover{border-color:var(--text);color:var(--text);}
+.btn-danger{
+  background:rgba(239,68,68,.15);border:1px solid var(--danger);
+  color:var(--danger);border-radius:8px;padding:.55rem 1.1rem;
+  font-family:'Roboto',sans-serif;font-size:.82rem;font-weight:600;
+  cursor:pointer;transition:opacity .2s;
+}
+.btn-danger:hover{opacity:.8;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px){
+  .sav-main,.gas-main{grid-template-columns:1fr;}
+  .gas-bottom{grid-template-columns:1fr 1fr;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:720px){
+  .container{padding:1rem;}
+  .sav-bottom,.gas-bottom{grid-template-columns:1fr;}
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .account-grid{grid-template-columns:1fr 1fr;}
+  .topbar{padding:0 1rem;}
+  .brand{font-size:.95rem;}
+}
+
+/* ── LOGIN SCREEN ── */
+#loginScreen{
+  display:flex;position:fixed;inset:0;z-index:99999;
+  background:var(--bg);align-items:center;justify-content:center;
+}
+.login-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;padding:3rem 2.5rem;
+  max-width:380px;width:90%;text-align:center;
+  animation:fadeUp .5s ease;
+}
+.login-logo{font-size:2.6rem;font-weight:900;letter-spacing:-.03em;margin-bottom:.4rem;}
+.login-logo span{color:var(--accent);}
+.login-tagline{color:var(--muted);font-size:.88rem;margin-bottom:2.2rem;line-height:1.5;}
+.btn-google{
+  display:flex;align-items:center;justify-content:center;gap:.75rem;
+  background:#fff;color:#1f1f1f;border:none;border-radius:10px;
+  padding:.85rem 1.5rem;width:100%;font-size:.9rem;font-weight:600;
+  font-family:'Roboto',sans-serif;cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);transition:box-shadow .2s,transform .15s;
+}
+.btn-google:hover{box-shadow:0 4px 18px rgba(0,0,0,.45);transform:translateY(-1px);}
+.btn-google img{width:20px;height:20px;}
+.login-note{font-size:.7rem;color:var(--muted);margin-top:1.4rem;line-height:1.6;}
+/* user chip in topbar */
+#userChip{display:flex;align-items:center;gap:.55rem;}
+#userAvatar{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);}
+#userEmail{font-size:.7rem;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#btnLogout{background:transparent;border:1px solid var(--border);color:var(--muted);
+  padding:.28rem .65rem;border-radius:6px;font-size:.68rem;cursor:pointer;
+  font-family:'Roboto',sans-serif;transition:all .15s;}
+#btnLogout:hover{border-color:var(--danger);color:var(--danger);}
+/* spinner */
+#syncSpinner{display:none;position:fixed;bottom:1.5rem;left:1.5rem;z-index:9998;
+  width:22px;height:22px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">Mis <span>Finanzas</span></div>
+    <div class="login-tagline">Dashboard financiero personal.<br>Sincronizado en todos tus dispositivos.</div>
+    <button class="btn-google" id="btnGoogleLogin">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+      Continuar con Google
+    </button>
+    <div class="login-note">Solo tú puedes acceder a tus datos.</div>
+  </div>
+</div>
+<div id="syncSpinner"></div>
+
+
+
+<!-- ══ TOPBAR ══ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="brand">Mis <span>Finanzas</span></div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('ahorros',this)">💰 Ahorros</button>
+      <button class="tab" onclick="switchTab('gastos',this)">📊 Ingresos & Gastos</button>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <!-- Ahorros controls -->
+    <div id="ahCtrl" style="display:flex;align-items:center;gap:.7rem;">
+      <button class="ghost-btn" onclick="openFTManager()" style="border-color:var(--accent);color:var(--accent);">⚙ Fintechs</button>
+      <button class="ghost-btn" onclick="resetData()">↺ Borrar datos</button>
+      <div class="year-badge">2026</div>
+    </div>
+    <!-- Gastos controls -->
+    <div id="gaCtrl" style="display:none;align-items:center;gap:.7rem;">
+      <div class="month-pill" id="monthBadge">— Sin datos —</div>
+      <label class="upload-btn" for="fileInput">↑ Importar Excel</label>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+    </div>
+    <!-- User -->
+    <div id="userChip" style="display:none;">
+      <img id="userAvatar" src="" alt="">
+      <span id="userEmail"></span>
+      <button id="btnLogout">Salir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SAVE INDICATOR ══ -->
+<div id="saveIndicator">✓ Guardado</div>
+
+<!-- ══════════════════════════════
+     PAGE: AHORROS
+══════════════════════════════ -->
+<div class="page active" id="page-ahorros">
+<div class="container">
+
+  <div class="summary-grid" id="summaryCards"></div>
+
+  <div class="sav-main">
+    <div class="panel">
+      <div class="panel-title">Registro Mensual</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1.5rem;">
+      <div class="panel">
+        <div class="panel-title">Distribución Actual</div>
+        <div class="fintech-list" id="fintechList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Evolución Total</div>
+        <div class="chart-area"><canvas id="growthChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sav-bottom">
+    <div class="panel">
+      <div class="panel-title">Análisis por Fintech</div>
+      <div class="fintech-list" id="fintechDetail"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Métricas Clave</div>
+      <div class="insights-grid" id="insightsGrid"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════
+     PAGE: GASTOS
+══════════════════════════════ -->
+<div class="page" id="page-gastos">
+<div class="container">
+
+  <!-- Month filter bar -->
+  <div class="panel" style="margin-bottom:1.5rem;padding:1rem 1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
+        <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;">Período</span>
+        <div id="monthFilterBtns" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-size:.72rem;color:var(--muted);">Vista</span>
+        <button class="pill active" id="viewPillMonth" onclick="switchView('month',this)">Mensual</button>
+        <button class="pill" id="viewPillAccum" onclick="switchView('accum',this)">Acumulado</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" style="margin-bottom:1.5rem;">
+    <div class="kpi" style="--kpi-color:var(--income)">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-label">Total Ingresos</div>
+      <div class="kpi-value" style="color:var(--income)" id="kpi-income">$0</div>
+      <div class="kpi-sub" id="kpi-income-sub">—</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--expense)">
+      <div class="kpi-icon">💸</div>
+      <div class="kpi-label">Total Gastos</div>
+      <div class="kpi-value" style="color:var(--expense)" id="kpi-expense">$0</div>
+      <div class="kpi-sub" id="kpi-expense-sub">—</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--accent)">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">Balance Neto</div>
+      <div class="kpi-value" id="kpi-balance">$0</div>
+      <div class="kpi-sub" id="kpi-balance-sub">—</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--accent4)">
+      <div class="kpi-icon">🧾</div>
+      <div class="kpi-label">Movimientos</div>
+      <div class="kpi-value" id="kpi-txcount">0</div>
+      <div class="kpi-sub" id="kpi-txcount-sub">—</div>
+    </div>
+  </div>
+
+  <!-- Monthly comparison chart (only in Acumulado view) -->
+  <div class="panel" id="monthlyCompPanel" style="margin-bottom:1.5rem;display:none;">
+    <div class="panel-header">
+      <div class="panel-title">Comparativo Mensual</div>
+      <div style="display:flex;gap:.4rem;">
+        <button class="pill active" onclick="switchCompChart('grouped',this)">Agrupado</button>
+        <button class="pill" onclick="switchCompChart('line',this)">Línea</button>
+      </div>
+    </div>
+    <div style="position:relative;height:260px;"><canvas id="monthlyCompChart"></canvas></div>
+  </div>
+
+  <!-- Main charts row -->
+  <div class="gas-main">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title" id="mainChartTitle">Gastos del Período</div>
+        <div style="display:flex;gap:.5rem;">
+          <button class="pill active" onclick="switchChart('daily',this)">Por día</button>
+          <button class="pill" onclick="switchChart('category',this)">Por categoría</button>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Categorías de Gasto</div>
+      <div class="cat-list" id="catList"><p style="color:var(--muted);font-size:.8rem">Importa un Excel para ver datos</p></div>
+    </div>
+  </div>
+
+  <div class="gas-bottom" style="grid-template-columns:1fr 1fr;">
+    <div class="panel">
+      <div class="panel-title">Subcategorías Top</div>
+      <div id="subCatContent"><p style="color:var(--muted);font-size:.8rem">—</p></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Ingresos por Fuente</div>
+      <div style="position:relative;height:180px;margin-bottom:.8rem"><canvas id="incomeChart"></canvas></div>
+      <div id="incomeDetail" style="font-size:.78rem;color:var(--muted);text-align:center">—</div>
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Movimientos</div>
+      <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+        <span id="txCountLabel" style="font-size:.78rem;color:var(--muted)"></span>
+        <button class="btn-secondary" style="font-size:.75rem;padding:.35rem .8rem;" onclick="openAddModal()">＋ Agregar</button>
+        <button class="btn-danger" style="font-size:.75rem;padding:.35rem .8rem;" onclick="promptDeleteMonth()">🗑 Eliminar mes</button>
+      </div>
+    </div>
+    <div class="tx-filters">
+      <button class="pill active" onclick="filterTx('all',this)">Todos</button>
+      <button class="pill" onclick="filterTx('Gastos',this)">Gastos</button>
+      <button class="pill" onclick="filterTx('Ingreso',this)">Ingresos</button>
+    </div>
+    <div class="tx-table-wrap">
+      <table class="tx-table">
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Nota</th><th>Categoría</th>
+            <th>Subcategoría</th><th>Tipo</th><th>Monto</th><th style="width:8%;text-align:center;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="txBody">
+          <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted)">Importa un archivo Excel para ver tus movimientos</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Edit/Add Modal -->
+  <div class="modal-overlay" id="txModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-title" id="modalTitle">Editar Movimiento</div>
+      <input type="hidden" id="modalEditId">
+      <div class="form-grid">
+        <div class="field"><label>Fecha</label><input type="date" id="mFecha"></div>
+        <div class="field"><label>Monto</label><input type="number" id="mMonto" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="field" style="grid-column:1/-1"><label>Tipo</label>
+          <select id="mTipo" onchange="onTipoChange()">
+            <option value="Gastos">Gastos</option>
+            <option value="Ingreso">Ingreso</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Categoría -->
+      <div class="field" style="margin-top:.8rem;">
+        <label>Categoría</label>
+        <select id="mCategoria" onchange="onCatChange()"></select>
+        <div style="display:flex;gap:.5rem;margin-top:.4rem;align-items:center;">
+          <input type="text" id="mNewCat" placeholder="Nueva categoría..." style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.4rem .6rem;color:var(--text);font-family:'Roboto',sans-serif;font-size:.78rem;outline:none;">
+          <button onclick="addNewCat()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.4rem .75rem;color:var(--accent);font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Roboto',sans-serif;">＋ Agregar</button>
+        </div>
+      </div>
+
+      <!-- Subcategoría -->
+      <div class="field" style="margin-top:.8rem;">
+        <label>Subcategoría <span style="color:var(--muted);font-weight:400;font-size:.7rem;">(opcional)</span></label>
+        <select id="mSubcat"></select>
+        <div style="display:flex;gap:.5rem;margin-top:.4rem;align-items:center;">
+          <input type="text" id="mNewSubcat" placeholder="Nueva subcategoría..." style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.4rem .6rem;color:var(--text);font-family:'Roboto',sans-serif;font-size:.78rem;outline:none;">
+          <button onclick="addNewSubcat()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.4rem .75rem;color:var(--accent);font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Roboto',sans-serif;">＋ Agregar</button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:.8rem;">
+        <label>Nota</label>
+        <input type="text" id="mNota" placeholder="Descripción del movimiento">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveModal()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════
+     SCRIPTS
+══════════════════════════════ -->
+<script type="module">
+// ─── Firebase SDK ───
+import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+                                   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc }
+                                   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDAKWdJkoViaEpY1zrpY6tJ0Y4PvZrXT1g",
+  authDomain: "personal-finances-771da.firebaseapp.com",
+  projectId: "personal-finances-771da",
+  storageBucket: "personal-finances-771da.firebasestorage.app",
+  messagingSenderId: "194056067466",
+  appId: "1:194056067466:web:fc18d4b4d47b153d409073"
+};
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getFirestore(fbApp);
+let currentUser = null;
+
+// ─── Firestore helpers ───
+function uref(...path){ return doc(db,'users',currentUser.uid,...path); }
+async function fsGet(...path){
+  try{ const s=await getDoc(uref(...path)); return s.exists()?s.data():null; }
+  catch(e){ console.error('fsGet',e); return null; }
+}
+async function fsSet(data,...path){
+  try{ await setDoc(uref(...path),data,{merge:true}); }
+  catch(e){ console.error('fsSet',e); }
+}
+
+// ─── UI helpers ───
+function showToast(msg,type){
+  if(!type) type='success';
+  var el=document.getElementById('saveIndicator');
+  if(!el) return;
+  el.textContent=(type==='success'?'✓ ':type==='info'?'⏳ ':'⚠ ')+msg;
+  el.style.background=type==='success'?'#10b981':type==='info'?'#3b82f6':'#f59e0b';
+  el.style.opacity='1';
+  clearTimeout(el._t);
+  el._t=setTimeout(function(){el.style.opacity='0';},2500);
+}
+function showSaveIndicator(){ showToast('Guardado'); }
+function setSyncing(on){
+  document.getElementById('syncSpinner').style.display=on?'block':'none';
+}
+
+// ─── Auth UI ───
+document.getElementById('btnGoogleLogin').addEventListener('click',async function(){
+  try{
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch(e){ showToast('Error: '+e.message,'warn'); }
+});
+document.getElementById('btnLogout').addEventListener('click',async function(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  await signOut(auth);
+});
+
+onAuthStateChanged(auth, async function(user){
+  if(user){
+    currentUser=user;
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('userChip').style.display='flex';
+    document.getElementById('userAvatar').src=user.photoURL||'';
+    document.getElementById('userEmail').textContent=user.email;
+    await initAppData();
+  } else {
+    currentUser=null;
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('userChip').style.display='none';
+  }
+});
+
+// ─── Load all data from Firestore on login ───
+async function initAppData(){
+  setSyncing(true);
+  showToast('Cargando datos...','info');
+  try{
+    // Fintech config
+    var ft=await fsGet('config','fintechs');
+    if(ft&&ft.list){ ftConfig=ft; FINTECHS=ftConfig.list; FT_COLORS=ftConfig.colors; }
+
+    // Ahorros rows
+    var ah=await fsGet('ahorros','data');
+    if(ah&&ah.rows) savData=ah.rows;
+
+    // Gastos transactions
+    var gas=await fsGet('gastos','data');
+    if(gas&&gas.transactions){
+      allData=gas.transactions.map(function(r){ return Object.assign({},r,{date:new Date(r.date)}); });
+    }
+
+    // Category catalog
+    var cat=await fsGet('gastos','catalog');
+    if(cat&&(cat.Gastos||cat.Ingreso)){ catalog=cat; }
+    else{ catalog=buildDefaultCatalog(); }
+
+    showToast('Datos cargados');
+  } catch(e){
+    showToast('Error cargando datos','warn');
+    console.error(e);
+  } finally{ setSyncing(false); }
+  renderAhorrosAll();
+  buildMonthFilter();
+}
+
+// ─── Save functions (Firestore) ───
+async function saveData(){
+  if(!currentUser) return;
+  setSyncing(true);
+  await fsSet({rows:savData},'ahorros','data');
+  setSyncing(false);
+  showToast('Guardado');
+}
+async function saveFTConfig(){
+  if(!currentUser) return;
+  await fsSet(ftConfig,'config','fintechs');
+}
+async function saveGastos(){
+  if(!currentUser) return;
+  setSyncing(true);
+  var serial=allData.map(function(r){ return Object.assign({},r,{date:r.date.toISOString()}); });
+  await fsSet({transactions:serial},'gastos','data');
+  setSyncing(false);
+  showToast('Guardado');
+}
+async function saveCatalog(){
+  if(!currentUser) return;
+  await fsSet(catalog,'gastos','catalog');
+}
+async function resetData(){
+  if(!confirm('¿Borrar todos los datos de Ahorros?')) return;
+  savData=JSON.parse(JSON.stringify(DEFAULT_DATA));
+  await saveData();
+  renderAhorrosAll();
+}
+
+// ─── DEFAULT Ahorros data (for new users) ───
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DEFAULT_DATA=MONTHS.map(function(m,i){
+  if(i===0) return {month:m,BBVA:102880,Nu:248795,'Didi Cuenta':155010,Mifel:50152};
+  if(i===1) return {month:m,BBVA:116725,Nu:249899,'Didi Cuenta':155824,Mifel:50418};
+  return {month:m,BBVA:null,Nu:null,'Didi Cuenta':null,Mifel:null};
+});
+let savData=JSON.parse(JSON.stringify(DEFAULT_DATA));
+
+function buildDefaultCatalog(){
+  var cat={Gastos:{},Ingreso:{}};
+  allData.forEach(function(r){
+    var tipo=r.tipo==='Ingreso'?'Ingreso':'Gastos';
+    var c=cleanCat(r.categoria); if(!c) return;
+    if(!cat[tipo][c]) cat[tipo][c]=[];
+    if(r.subcat&&!cat[tipo][c].includes(r.subcat)) cat[tipo][c].push(r.subcat);
+  });
+  return cat;
+}
+
+
+/* ─── TAB SWITCHER ─── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('ahCtrl').style.display = name === 'ahorros' ? 'flex' : 'none';
+  document.getElementById('gaCtrl').style.display  = name === 'gastos'  ? 'flex' : 'none';
+  if (name === 'gastos') { buildMonthFilter(); renderGastosAll(); }
+}
+
+/* ══════════════════════════════
+   AHORROS LOGIC
+══════════════════════════════ */
+
+// ── Paleta de colores disponibles para nuevas fintechs ──
+const COLOR_PALETTE = [
+  '#60a5fa','#c084fc','#fb923c','#93c5fd',
+  '#34d399','#f87171','#fbbf24','#a78bfa',
+  '#38bdf8','#f472b6','#4ade80','#e879f9'
+];
+
+
+const DEFAULT_FT_CONFIG = {
+  list:   ['BBVA','Nu','Didi Cuenta','Mifel'],
+  colors: { BBVA:'#60a5fa', Nu:'#c084fc', 'Didi Cuenta':'#fb923c', Mifel:'#93c5fd' },
+  noReturn: ['BBVA']   // fintechs excluidas de cálculos de rendimiento
+};
+
+
+let ftConfig = loadFTConfig();
+// Live references (updated whenever ftConfig changes)
+let FINTECHS  = ftConfig.list;
+let FT_COLORS = ftConfig.colors;
+
+function ftTag(name){
+  const color = FT_COLORS[name] || '#94a3b8';
+  return `<span style="display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;background:${color}22;color:${color};">${name}</span>`;
+}
+
+
+
+
+const fmtMXN = n => n==null||isNaN(n) ? '—' : '$'+Math.round(n).toLocaleString('es-MX');
+const fmtPct = n => n==null||isNaN(n) ? '—' : (n>=0?'+':'')+n.toFixed(2)+'%';
+
+function rowTotal(row){
+  const v=FINTECHS.map(f=>row[f]).filter(x=>x!==null&&!isNaN(x));
+  return v.length?v.reduce((a,b)=>a+b,0):null;
+}
+function getFilledRows(){ return savData.filter(r=>rowTotal(r)!==null); }
+function calcGrowth(c,p){ return (c==null||p==null||p===0)?null:((c-p)/p)*100; }
+
+/* ── Fintech Management Modal ── */
+function openFTManager(){
+  let existing=document.getElementById('ftManagerModal');
+  if(existing) existing.remove();
+
+  const overlay=document.createElement('div');
+  overlay.id='ftManagerModal';
+  overlay.className='modal-overlay open';
+
+  function buildContent(){
+    const rows = FINTECHS.map(f=>`
+      <div style="display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+        <div style="width:12px;height:12px;border-radius:50%;background:${FT_COLORS[f]};flex-shrink:0;"></div>
+        <span style="flex:1;font-weight:600;font-size:.85rem;">${f}</span>
+        ${ftConfig.noReturn.includes(f)?`<span style="font-size:.68rem;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:.1rem .45rem;border-radius:4px;">sin rendimiento</span>`:''}
+        <button onclick="deleteFT('${f}')" style="background:transparent;border:1px solid transparent;border-radius:6px;padding:.2rem .5rem;cursor:pointer;color:var(--muted);font-size:.8rem;transition:all .15s;"
+          onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'"
+          onmouseout="this.style.borderColor='transparent';this.style.color='var(--muted)'">✕</button>
+      </div>`).join('');
+
+    overlay.innerHTML=`
+      <div class="modal" style="max-width:400px;">
+        <button class="modal-close" onclick="document.getElementById('ftManagerModal').remove()">✕</button>
+        <div class="modal-title">Gestionar Fintechs</div>
+
+        <p style="font-size:.75rem;color:var(--muted);margin-bottom:.9rem;">Fintechs activas — aparecen como columnas en la tabla</p>
+        <div style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:1.2rem;" id="ftList">${rows}</div>
+
+        <div style="border-top:1px solid var(--border);padding-top:1.1rem;">
+          <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-bottom:.7rem;">Agregar nueva fintech</p>
+          <div class="form-grid">
+            <div class="field"><label>Nombre</label><input type="text" id="ftNewName" placeholder="Ej: Cetes, Hey Banco..."></div>
+            <div class="field"><label>Color</label>
+              <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
+                ${COLOR_PALETTE.map(c=>`<div onclick="selectFTColor('${c}')" id="ftcol_${c.replace('#','')}"
+                  style="width:20px;height:20px;border-radius:50%;background:${c};cursor:pointer;border:2px solid transparent;transition:border-color .15s;flex-shrink:0;"
+                  onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"></div>`).join('')}
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:.7rem;display:flex;align-items:center;gap:.6rem;">
+            <input type="checkbox" id="ftNoReturn" style="accent-color:var(--accent);width:14px;height:14px;">
+            <label for="ftNoReturn" style="font-size:.78rem;color:var(--muted);cursor:pointer;">Excluir de cálculos de rendimiento (como BBVA)</label>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button class="btn-secondary" onclick="document.getElementById('ftManagerModal').remove()">Cerrar</button>
+          <button class="btn-primary" onclick="addFT()">＋ Agregar</button>
+        </div>
+      </div>`;
+    overlay.addEventListener('click',e=>{ if(e.target===overlay) overlay.remove(); });
+    // Set first color selected by default
+    if(!window._selectedFTColor) window._selectedFTColor=COLOR_PALETTE[0];
+    setTimeout(()=>{ selectFTColor(window._selectedFTColor); },0);
+  }
+
+  buildContent();
+  document.body.appendChild(overlay);
+}
+
+let _selectedFTColor = COLOR_PALETTE[0];
+function selectFTColor(color){
+  _selectedFTColor=color;
+  COLOR_PALETTE.forEach(c=>{
+    const el=document.getElementById('ftcol_'+c.replace('#',''));
+    if(el) el.style.borderColor = c===color ? '#fff' : 'transparent';
+  });
+}
+
+function addFT(){
+  const name=document.getElementById('ftNewName').value.trim();
+  if(!name){ alert('Escribe el nombre de la fintech.'); return; }
+  if(FINTECHS.includes(name)){ alert('Ya existe una fintech con ese nombre.'); return; }
+  const color=_selectedFTColor||COLOR_PALETTE[0];
+  const noReturn=document.getElementById('ftNoReturn').checked;
+
+  ftConfig.list.push(name);
+  ftConfig.colors[name]=color;
+  if(noReturn) ftConfig.noReturn.push(name);
+
+  FINTECHS=ftConfig.list;
+  FT_COLORS=ftConfig.colors;
+
+  // Add null column to all months
+  savData.forEach(row=>{ row[name]=null; });
+
+  saveFTConfig(); saveData();
+  document.getElementById('ftManagerModal').remove();
+  renderAhorrosAll();
+  showToast(`${name} agregada`);
+}
+
+function deleteFT(name){
+  if(FINTECHS.length<=1){ alert('Debes tener al menos una fintech.'); return; }
+  if(!confirm(`¿Eliminar "${name}" y todos sus datos? Esta acción no se puede deshacer.`)) return;
+
+  ftConfig.list=ftConfig.list.filter(f=>f!==name);
+  delete ftConfig.colors[name];
+  ftConfig.noReturn=ftConfig.noReturn.filter(f=>f!==name);
+
+  FINTECHS=ftConfig.list;
+  FT_COLORS=ftConfig.colors;
+
+  savData.forEach(row=>{ delete row[name]; });
+
+  saveFTConfig(); saveData();
+  document.getElementById('ftManagerModal').remove();
+  renderAhorrosAll();
+  showToast(`${name} eliminada`);
+}
+
+function renderTable(){
+  const tbody=document.getElementById('tableBody'); tbody.innerHTML='';
+  // Rebuild thead dynamically
+  const thead=tbody.closest('table').querySelector('thead tr');
+  thead.innerHTML=`<th>Mes</th>`+
+    FINTECHS.map(f=>`<th>${ftTag(f)}</th>`).join('')+
+    `<th>Total</th><th>Crecimiento</th>`;
+
+  savData.forEach((row,i)=>{
+    const total=rowTotal(row);
+    const prevTotal=i>0?rowTotal(savData[i-1]):null;
+    const growth=calcGrowth(total,prevTotal);
+    const tr=document.createElement('tr');
+    if(total!==null) tr.classList.add('active-row');
+    let h=`<td>${row.month}</td>`;
+    FINTECHS.forEach(f=>{
+      h+=`<td><input type="text" value="${row[f]!==null?row[f]:''}" placeholder="0"
+        data-row="${i}" data-field="${f}"
+        onblur="handleInput(this)" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
+    });
+    h+=`<td class="total-cell">${total!==null?fmtMXN(total):'—'}</td>`;
+    h+=growth!==null?`<td class="growth-cell ${growth>=0?'pos':'neg'}">${fmtPct(growth)}</td>`:`<td class="growth-cell">—</td>`;
+    tr.innerHTML=h; tbody.appendChild(tr);
+  });
+}
+
+function handleInput(el){
+  const i=parseInt(el.dataset.row), f=el.dataset.field;
+  const raw=el.value.replace(/[^0-9.]/g,'');
+  savData[i][f]=raw===''?null:parseFloat(raw);
+  if(raw!=='') el.value=Math.round(parseFloat(raw));
+  saveData(); renderAhorrosAll();
+}
+
+function renderSummary(){
+  const filled=getFilledRows();
+  const latest=filled[filled.length-1], prev=filled[filled.length-2], first=filled[0];
+  const latestTotal=latest?rowTotal(latest):null;
+  const momGrowth=calcGrowth(latestTotal,prev?rowTotal(prev):null);
+  const ytdGrowth=calcGrowth(latestTotal,first?rowTotal(first):null);
+  const container=document.getElementById('summaryCards'); container.innerHTML='';
+
+  const cards=[
+    {label:'Total Actual',value:fmtMXN(latestTotal),sub:latest?latest.month:'—',growth:momGrowth,color:'var(--accent)'},
+    {label:'Crecimiento MoM',value:momGrowth!==null?fmtPct(momGrowth):'—',sub:prev&&latest?`${prev.month} → ${latest.month}`:'—',growth:momGrowth,color:momGrowth!==null&&momGrowth>=0?'var(--accent3)':'var(--danger)'},
+    {label:'Crecimiento YTD',value:ytdGrowth!==null?fmtPct(ytdGrowth):'—',sub:first&&latest?`${first.month} → ${latest.month}`:'—',growth:ytdGrowth,color:'var(--accent2)'},
+    {label:'Meses Registrados',value:filled.length,sub:'de 12 meses',growth:null,color:'var(--accent4)'},
+    {label:'Mejor Fintech (MoM)',value:(()=>{
+      if(!latest||!prev) return '—';
+      let best=null,bg=-Infinity;
+      FINTECHS.filter(f=>!ftConfig.noReturn.includes(f)).forEach(f=>{const g=calcGrowth(latest[f],prev[f]);if(g!==null&&g>bg){bg=g;best=f;}});
+      return best||'—';
+    })(),sub:(()=>{
+      if(!latest||!prev) return '';
+      let best=null,bg=-Infinity;
+      FINTECHS.filter(f=>!ftConfig.noReturn.includes(f)).forEach(f=>{const g=calcGrowth(latest[f],prev[f]);if(g!==null&&g>bg){bg=g;best=f;}});
+      return best?fmtPct(bg):'';
+    })(),growth:null,color:'var(--accent4)'}
+  ];
+
+  cards.forEach(c=>{
+    const d=document.createElement('div'); d.className='card';
+    d.style.setProperty('--card-color',c.color);
+    let badge='';
+    if(c.growth!==null){
+      const cls=c.growth>=0?'growth-up':'growth-down';
+      badge=`<div class="card-growth ${cls}">${c.growth>=0?'↑':'↓'} ${fmtPct(Math.abs(c.growth))}</div>`;
+    }
+    d.innerHTML=`<div class="card-label">${c.label}</div><div class="card-value">${c.value}</div><div class="card-sub">${c.sub}</div>${badge}`;
+    container.appendChild(d);
+  });
+}
+
+function renderDistribution(){
+  const filled=getFilledRows(); const latest=filled[filled.length-1];
+  const container=document.getElementById('fintechList'); container.innerHTML='';
+  if(!latest){container.innerHTML='<p style="color:var(--muted);font-size:.8rem">Sin datos</p>';return;}
+  const total=rowTotal(latest);
+  FINTECHS.forEach(f=>{
+    const val=latest[f]; if(val===null) return;
+    const pct=total>0?(val/total*100):0;
+    const color=FT_COLORS[f]||'#94a3b8';
+    const item=document.createElement('div'); item.className='fintech-item';
+    item.innerHTML=`
+      <div class="fintech-header">
+        <div class="fintech-name"><div class="fintech-dot" style="background:${color}"></div>${f}</div>
+        <div style="display:flex;gap:.8rem;align-items:center">
+          <span class="fintech-amount">${fmtMXN(val)}</span>
+          <span class="fintech-pct" style="color:${color}">${pct.toFixed(1)}%</span>
+        </div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+    container.appendChild(item);
+  });
+}
+
+let chartInstance=null;
+function renderSavChart(){
+  const filled=getFilledRows();
+  const ctx=document.getElementById('growthChart').getContext('2d');
+  if(chartInstance) chartInstance.destroy();
+  if(filled.length<1) return;
+  chartInstance=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:filled.map(r=>r.month.slice(0,3)),
+      datasets:[
+        {label:'Total',data:filled.map(r=>rowTotal(r)),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.1)',borderWidth:2.5,tension:.4,pointRadius:4,fill:true},
+        ...FINTECHS.map(f=>({label:f,data:filled.map(r=>r[f]),borderColor:FT_COLORS[f]||'#94a3b8',backgroundColor:(FT_COLORS[f]||'#94a3b8')+'22',borderWidth:1.5,tension:.4,pointRadius:3,fill:false}))
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true,position:'bottom',labels:{color:'#64748b',font:{family:'Roboto',size:10},boxWidth:10,padding:8}},
+        tooltip:{backgroundColor:'#111827',borderColor:'#1e2d45',borderWidth:1,titleColor:'#f1f5f9',bodyColor:'#94a3b8',
+          callbacks:{label:ctx=>` ${ctx.dataset.label}: $${Math.round(ctx.parsed.y).toLocaleString('es-MX')}`}}
+      },
+      scales:{
+        x:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{family:'Roboto',size:10}}},
+        y:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{family:'Roboto',size:10},callback:v=>'$'+(v/1000).toFixed(0)+'k'}}
+      }
+    }
+  });
+}
+
+function renderFintechDetail(){
+  const filled=getFilledRows(); const container=document.getElementById('fintechDetail'); container.innerHTML='';
+  if(filled.length<2){container.innerHTML='<p style="color:var(--muted);font-size:.8rem">Necesitas al menos 2 meses de datos</p>';return;}
+  const latest=filled[filled.length-1], prev=filled[filled.length-2], first=filled[0];
+  FINTECHS.forEach(f=>{
+    if(latest[f]===null) return;
+    const color=FT_COLORS[f]||'#94a3b8';
+    const mom=calcGrowth(latest[f],prev[f]), ytd=calcGrowth(latest[f],first[f]), diff=latest[f]-(prev[f]||0);
+    const item=document.createElement('div'); item.className='fintech-item';
+    item.style.cssText='padding:.8rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:.5rem';
+    item.innerHTML=`
+      <div class="fintech-header" style="margin-bottom:.6rem">
+        <div class="fintech-name"><div class="fintech-dot" style="background:${color}"></div>${ftTag(f)}</div>
+        <span style="font-weight:700;font-size:.95rem">${fmtMXN(latest[f])}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;font-size:.72rem">
+        <div><div style="color:var(--muted);margin-bottom:.2rem">Mes a Mes</div><div style="font-weight:600;color:${mom!==null&&mom>=0?'var(--accent3)':'var(--danger)'}">${fmtPct(mom)}</div></div>
+        <div><div style="color:var(--muted);margin-bottom:.2rem">Acumulado</div><div style="font-weight:600;color:${ytd!==null&&ytd>=0?'var(--accent3)':'var(--danger)'}">${fmtPct(ytd)}</div></div>
+        <div><div style="color:var(--muted);margin-bottom:.2rem">Δ vs ant.</div><div style="font-weight:600;color:${diff>=0?'var(--accent3)':'var(--danger)'}">${diff>=0?'+':''}${fmtMXN(diff).replace('$','')}</div></div>
+      </div>`;
+    container.appendChild(item);
+  });
+}
+
+function renderInsights(){
+  const filled=getFilledRows(); const container=document.getElementById('insightsGrid'); container.innerHTML='';
+  if(filled.length<2){container.innerHTML='<p style="color:var(--muted);font-size:.8rem;grid-column:1/-1">Necesitas al menos 2 meses</p>';return;}
+  const latest=filled[filled.length-1], first=filled[0];
+  const latestTotal=rowTotal(latest), firstTotal=rowTotal(first);
+  let bestIdx=-1,bestG=-Infinity;
+  for(let i=1;i<filled.length;i++){const g=calcGrowth(rowTotal(filled[i]),rowTotal(filled[i-1]));if(g!==null&&g>bestG){bestG=g;bestIdx=i;}}
+  const growths=[];
+  for(let i=1;i<filled.length;i++){const g=calcGrowth(rowTotal(filled[i]),rowTotal(filled[i-1]));if(g!==null) growths.push(g);}
+  const avg=growths.length?growths.reduce((a,b)=>a+b,0)/growths.length:null;
+  const RFT=FINTECHS.filter(f=>!ftConfig.noReturn.includes(f));
+  const ganFin=RFT.reduce((s,f)=>s+(latest[f]||0),0)-RFT.reduce((s,f)=>s+(first[f]||0),0);
+  [
+    {label:'Total Ganado YTD',value:fmtMXN(latestTotal-firstTotal),sub:`desde ${first.month}`,color:'var(--accent3)'},
+    {label:'Ganado con Fintechs',value:fmtMXN(ganFin),sub:'Nu + Didi Cuenta + Mifel',color:'var(--accent)'},
+    {label:'Crecimiento Promedio',value:fmtPct(avg),sub:'mensual',color:'var(--accent2)'},
+    {label:'Mejor Mes',value:bestIdx>=0?filled[bestIdx].month.slice(0,3):'—',sub:fmtPct(bestG),color:'var(--accent4)'},
+  ].forEach(item=>{
+    const d=document.createElement('div'); d.className='insight-box';
+    d.innerHTML=`<div class="insight-label">${item.label}</div><div class="insight-value" style="color:${item.color}">${item.value}</div><div class="insight-sub">${item.sub}</div>`;
+    container.appendChild(d);
+  });
+}
+
+function renderAhorrosAll(){
+  renderSummary(); renderTable(); renderDistribution(); renderSavChart(); renderFintechDetail(); renderInsights();
+}
+
+/* ══════════════════════════════
+   GASTOS LOGIC
+══════════════════════════════ */
+const CAT_COLORS=['#f59e0b','#06b6d4','#10b981','#8b5cf6','#ef4444','#f97316','#3b82f6','#ec4899','#14b8a6','#a78bfa'];
+const MONTH_ES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let allData=[], filteredType='all', chartMode='daily';
+let currentMonthKey='all'; // 'all' or 'YYYY-M'
+let viewMode='month'; // 'month' | 'accum'
+let compChartMode='grouped';
+let mainChartInst=null, incomeChartInst=null, monthlyCompInst=null;
+
+// Demo data (Feb 2026)
+const DEMO=[
+  ['2026-02-28','BBVA','Personal','Social','Jaula de bateo',200,'Gastos'],
+  ['2026-02-28','BBVA','Personal','Social','King club',300,'Gastos'],
+  ['2026-02-28','BBVA','Personal','Social','Cotorritos',2000,'Gastos'],
+  ['2026-02-28','Edenred','Básicos','Comidas','Comida',251,'Gastos'],
+  ['2026-02-28','Edenred','🏅 Resideo/Bonus','','Despensa',821.17,'Ingreso'],
+  ['2026-02-28','Edenred','🏅 Resideo/Bonus','','Restaurante',367.31,'Ingreso'],
+  ['2026-02-27','BBVA','Básicos','Comidas','Comida',556,'Gastos'],
+  ['2026-02-27','BBVA','Básicos','Servicio','Cell Datos',100,'Gastos'],
+  ['2026-02-26','BBVA','💰 Resideo/Salario','','Resideo Nomina',10576.53,'Ingreso'],
+  ['2026-02-26','BBVA','Básicos','Super','Aseo',160.49,'Gastos'],
+  ['2026-02-22','BBVA','Personal','Danaly','Comida',1000,'Gastos'],
+  ['2026-02-22','BBVA','Personal','Subscipciones','Disney Plus',149,'Gastos'],
+  ['2026-02-21','BBVA','Básicos','Comidas','Comida',352,'Gastos'],
+  ['2026-02-21','BBVA','Personal','TDC','TDC',892,'Gastos'],
+  ['2026-02-20','BBVA','Básicos','Servicio','Mantenimiento',800,'Gastos'],
+  ['2026-02-20','BBVA','Estacionamiento','','Estacionamiento 95',1000,'Ingreso'],
+  ['2026-02-20','BBVA','Básicos','Comidas','Comida',90.85,'Gastos'],
+  ['2026-02-20','Edenred','🏅 Resideo/Bonus','','Restaurante',367.31,'Ingreso'],
+  ['2026-02-20','Edenred','🏅 Resideo/Bonus','','Despensa',821.17,'Ingreso'],
+  ['2026-02-19','BBVA','Básicos','Transporte','Didi',80,'Gastos'],
+  ['2026-02-19','Edenred','Básicos','Comidas','Comida',154,'Gastos'],
+  ['2026-02-19','BBVA','💰 Resideo/Salario','','Resideo Nomina',10576.56,'Ingreso'],
+  ['2026-02-18','BBVA','Básicos','Servicio','Cell Datos',150,'Gastos'],
+  ['2026-02-18','Edenred','Básicos','Comidas','Comida',220,'Gastos'],
+  ['2026-02-18','BBVA','Personal','Social','Babalu',410,'Gastos'],
+  ['2026-02-17','BBVA','Personal','Remesa','Remesa',2100,'Gastos'],
+  ['2026-02-16','Cash','Básicos','Servicio','Lavanderia',130,'Gastos'],
+  ['2026-02-16','BBVA','Básicos','Super','Oxxo',151,'Gastos'],
+  ['2026-02-16','BBVA','Personal','Subscipciones','Spotify',139,'Gastos'],
+  ['2026-02-14','Edenred','Básicos','Comidas','Comida',170,'Gastos'],
+  ['2026-02-14','BBVA','Personal','Social','La Candela',1375,'Gastos'],
+  ['2026-02-14','BBVA','Personal','Social','Janis',1528,'Gastos'],
+  ['2026-02-14','BBVA','Personal','Social','Bebida alcohólica',310,'Gastos'],
+  ['2026-02-14','BBVA','Personal','Ropa','Lefties',4900,'Gastos'],
+  ['2026-02-14','BBVA','Personal','Social','Bebida alcohólica',407,'Gastos'],
+  ['2026-02-14','BBVA','Básicos','Comidas','Mercado Roma',258.5,'Gastos'],
+  ['2026-02-14','BBVA','Personal','Ropa','Chamarra Dana',899,'Gastos'],
+  ['2026-02-13','Edenred','🏅 Resideo/Bonus','','Restaurante',367.31,'Ingreso'],
+  ['2026-02-13','Edenred','🏅 Resideo/Bonus','','Despensa',821.17,'Ingreso'],
+  ['2026-02-13','BBVA','Básicos','Comidas','Restaurante',968,'Gastos'],
+  ['2026-02-12','BBVA','Personal','TDC','Palacio H',4228,'Gastos'],
+  ['2026-02-12','BBVA','💰 Resideo/Salario','','Resideo Nomina',10563.53,'Ingreso'],
+  ['2026-02-11','BBVA','Básicos','Carro','Estacionamiento 58',1000,'Gastos'],
+  ['2026-02-10','Cash','Básicos','Carro','Lavado',145,'Gastos'],
+  ['2026-02-09','BBVA','Básicos','Salud','Lentes',1880,'Gastos'],
+  ['2026-02-08','Edenred','Básicos','Super','Walmart',650,'Gastos'],
+  ['2026-02-08','Edenred','Básicos','Super','Tiendita',187,'Gastos'],
+  ['2026-02-08','BBVA','Personal','Social','Tumbao',620,'Gastos'],
+  ['2026-02-08','BBVA','Personal','Social','Antro cubano',585,'Gastos'],
+  ['2026-02-08','Cash','Básicos','Carro','Estacionamiento centro',70,'Gastos'],
+  ['2026-02-08','BBVA','Básicos','Super','Walmart',1077,'Gastos'],
+  ['2026-02-07','Cash','Personal','Social','Cerveza after play',230,'Gastos'],
+  ['2026-02-07','BBVA','Básicos','Servicio','Qualitas',882.72,'Gastos'],
+  ['2026-02-07','BBVA','Personal','Subscipciones','Netflix',119,'Gastos'],
+  ['2026-02-07','BBVA','Personal','Social','Bebida alcohólica',200,'Gastos'],
+  ['2026-02-06','Edenred','🏅 Resideo/Bonus','','Restaurante',363.14,'Ingreso'],
+  ['2026-02-06','Edenred','🏅 Resideo/Bonus','','Despensa',796.15,'Ingreso'],
+  ['2026-02-05','BBVA','Personal','Subscipciones','AMZ Prime',99,'Gastos'],
+  ['2026-02-05','BBVA','💰 Resideo/Salario','','Resideo Nomina',10997.92,'Ingreso'],
+  ['2026-02-03','Cash','Básicos','Servicio','Lavanderia',115,'Gastos'],
+  ['2026-02-03','BBVA','Personal','Subscipciones','Canva',150,'Gastos'],
+  ['2026-02-02','BBVA','Básicos','Servicio','Totalplay',530,'Gastos'],
+  ['2026-02-02','BBVA','Básicos','Renta','Renta',8000,'Gastos'],
+  ['2026-02-02','Edenred','Básicos','Super','Soriana Super',1195,'Gastos'],
+  ['2026-02-01','BBVA','Personal','Hogar','Temu',1125,'Gastos'],
+];
+
+const DEMO_MARZO = [
+  // Ingresos
+  ['2026-03-05','BBVA','💰 Resideo/Salario','','Resideo Nomina',10997.92,'Ingreso'],
+  ['2026-03-12','BBVA','💰 Resideo/Salario','','Resideo Nomina',10563.53,'Ingreso'],
+  ['2026-03-19','BBVA','💰 Resideo/Salario','','Resideo Nomina',10576.56,'Ingreso'],
+  ['2026-03-26','BBVA','💰 Resideo/Salario','','Resideo Nomina',10576.53,'Ingreso'],
+  ['2026-03-06','Edenred','🏅 Resideo/Bonus','','Despensa',821.17,'Ingreso'],
+  ['2026-03-06','Edenred','🏅 Resideo/Bonus','','Restaurante',367.31,'Ingreso'],
+  ['2026-03-13','Edenred','🏅 Resideo/Bonus','','Despensa',821.17,'Ingreso'],
+  ['2026-03-13','Edenred','🏅 Resideo/Bonus','','Restaurante',367.31,'Ingreso'],
+  ['2026-03-20','Edenred','🏅 Resideo/Bonus','','Despensa',821.17,'Ingreso'],
+  ['2026-03-20','Edenred','🏅 Resideo/Bonus','','Restaurante',367.31,'Ingreso'],
+  ['2026-03-27','Edenred','🏅 Resideo/Bonus','','Despensa',821.17,'Ingreso'],
+  ['2026-03-27','Edenred','🏅 Resideo/Bonus','','Restaurante',367.31,'Ingreso'],
+  ['2026-03-15','BBVA','Estacionamiento','','Estacionamiento 95',1000,'Ingreso'],
+  // Básicos
+  ['2026-03-02','BBVA','Básicos','Renta','Renta',8000,'Gastos'],
+  ['2026-03-02','BBVA','Básicos','Servicio','Totalplay',530,'Gastos'],
+  ['2026-03-03','Edenred','Básicos','Super','Soriana Super',1380,'Gastos'],
+  ['2026-03-04','BBVA','Básicos','Comidas','Comida',420,'Gastos'],
+  ['2026-03-05','BBVA','Básicos','Servicio','Qualitas',882.72,'Gastos'],
+  ['2026-03-07','Edenred','Básicos','Comidas','Comida',210,'Gastos'],
+  ['2026-03-08','BBVA','Básicos','Super','Walmart',980,'Gastos'],
+  ['2026-03-09','Cash','Básicos','Carro','Lavado',145,'Gastos'],
+  ['2026-03-10','BBVA','Básicos','Comidas','Comida',315,'Gastos'],
+  ['2026-03-11','BBVA','Básicos','Servicio','Cell Datos',100,'Gastos'],
+  ['2026-03-12','Edenred','Básicos','Super','Walmart',720,'Gastos'],
+  ['2026-03-14','Edenred','Básicos','Comidas','Comida',185,'Gastos'],
+  ['2026-03-15','BBVA','Básicos','Carro','Estacionamiento',120,'Gastos'],
+  ['2026-03-16','Cash','Básicos','Servicio','Lavanderia',130,'Gastos'],
+  ['2026-03-17','BBVA','Básicos','Comidas','Restaurante',560,'Gastos'],
+  ['2026-03-18','Edenred','Básicos','Super','Oxxo',230,'Gastos'],
+  ['2026-03-19','BBVA','Básicos','Servicio','Mantenimiento',600,'Gastos'],
+  ['2026-03-21','BBVA','Básicos','Comidas','Comida',290,'Gastos'],
+  ['2026-03-22','Edenred','Básicos','Comidas','Comida',175,'Gastos'],
+  ['2026-03-23','Cash','Básicos','Servicio','Lavanderia',115,'Gastos'],
+  ['2026-03-24','BBVA','Básicos','Super','Aseo',210,'Gastos'],
+  ['2026-03-25','BBVA','Básicos','Transporte','Didi',120,'Gastos'],
+  ['2026-03-27','BBVA','Básicos','Comidas','Comida',380,'Gastos'],
+  ['2026-03-28','Edenred','Básicos','Comidas','Comida',250,'Gastos'],
+  ['2026-03-29','BBVA','Básicos','Salud','Farmacia',340,'Gastos'],
+  // Personal
+  ['2026-03-01','BBVA','Personal','Hogar','Amazon',890,'Gastos'],
+  ['2026-03-06','BBVA','Personal','Subscipciones','Netflix',119,'Gastos'],
+  ['2026-03-06','BBVA','Personal','Subscipciones','Spotify',139,'Gastos'],
+  ['2026-03-07','BBVA','Personal','Social','Bar La Roma',650,'Gastos'],
+  ['2026-03-08','BBVA','Personal','Social','Antro',980,'Gastos'],
+  ['2026-03-08','Cash','Personal','Social','Taxi',150,'Gastos'],
+  ['2026-03-13','BBVA','Personal','Danaly','Comida',800,'Gastos'],
+  ['2026-03-14','BBVA','Personal','Social','Bebida alcohólica',410,'Gastos'],
+  ['2026-03-16','BBVA','Personal','Subscipciones','Disney Plus',149,'Gastos'],
+  ['2026-03-18','BBVA','Personal','Subscipciones','AMZ Prime',99,'Gastos'],
+  ['2026-03-20','BBVA','Personal','Ropa','Zara',2400,'Gastos'],
+  ['2026-03-21','BBVA','Personal','TDC','TDC',1200,'Gastos'],
+  ['2026-03-22','BBVA','Personal','Social','Cena amigos',1100,'Gastos'],
+  ['2026-03-23','BBVA','Personal','Remesa','Remesa',2100,'Gastos'],
+  ['2026-03-28','BBVA','Personal','Social','Concierto',750,'Gastos'],
+  ['2026-03-29','BBVA','Personal','Subscipciones','Canva',150,'Gastos'],
+  ['2026-03-30','BBVA','Personal','Hogar','Liverpool',1850,'Gastos'],
+  ['2026-03-31','Cash','Personal','Social','Cerveza',180,'Gastos'],
+];
+
+
+/* ── Gastos data ── */
+
+document.getElementById('fileInput').addEventListener('change',function(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd'});
+    parseRows(rows); saveGastos(); buildMonthFilter(); renderGastosAll();
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value='';
+});
+
+function parseRows(rows){
+  const newRows=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]; if(!r||r.length<7) continue;
+    const monto=parseFloat(String(r[5]).replace(/[^0-9.]/g,''))||0;
+    const tipo=r[6]||''; if(!r[0]||!monto) continue;
+    let date=r[0] instanceof Date?r[0]:new Date(r[0]);
+    newRows.push({id:crypto.randomUUID(),date,cuenta:r[1]||'',categoria:r[2]||'',subcat:r[3]||'',nota:r[4]||'',monto,tipo});
+  }
+  if(!newRows.length) return;
+  // Replace only the months present in the imported file
+  const importedKeys=new Set(newRows.map(r=>monthKey(r.date)));
+  allData=allData.filter(r=>!importedKeys.has(monthKey(r.date)));
+  allData=[...allData,...newRows];
+}
+
+const fmtG=n=>'$'+n.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:2});
+const cleanCat=c=>c.replace(/[🏅💰]/g,'').trim();
+
+/* ── Month key helpers ── */
+function monthKey(date){ return `${date.getFullYear()}-${date.getMonth()+1}`; }
+function monthLabel(key){ const[y,m]=key.split('-'); return `${MONTH_ES[+m-1].slice(0,3)} ${y}`; }
+function getMonthKeys(){
+  const keys=[...new Set(allData.map(r=>monthKey(r.date)))];
+  return keys.sort();
+}
+
+/* ── Active dataset based on filter ── */
+function getActiveData(){
+  if(currentMonthKey==='all' || viewMode==='accum') return allData;
+  return allData.filter(r=>monthKey(r.date)===currentMonthKey);
+}
+
+/* ── Build month filter buttons ── */
+function buildMonthFilter(){
+  const keys=getMonthKeys();
+  const container=document.getElementById('monthFilterBtns');
+  container.innerHTML='';
+
+  // "Todos" pill
+  const allBtn=document.createElement('button');
+  allBtn.className='pill'+(viewMode==='accum'||currentMonthKey==='all'?' active':'');
+  allBtn.textContent='Todos';
+  allBtn.onclick=()=>{ currentMonthKey='all'; buildMonthFilter(); renderGastosAll(); };
+  container.appendChild(allBtn);
+
+  keys.forEach(k=>{
+    const btn=document.createElement('button');
+    btn.className='pill'+(currentMonthKey===k&&viewMode!=='accum'?' active':'');
+    btn.textContent=monthLabel(k);
+    btn.onclick=()=>{ currentMonthKey=k; viewMode='month';
+      document.getElementById('viewPillMonth').classList.add('active');
+      document.getElementById('viewPillAccum').classList.remove('active');
+      buildMonthFilter(); renderGastosAll();
+    };
+    container.appendChild(btn);
+  });
+
+  // update month badge in topbar
+  const sorted=allData.map(r=>r.date).sort((a,b)=>a-b);
+  if(sorted.length){
+    const first=sorted[0], last=sorted[sorted.length-1];
+    const fl=`${MONTH_ES[first.getMonth()].slice(0,3)} ${first.getFullYear()}`;
+    const ll=`${MONTH_ES[last.getMonth()].slice(0,3)} ${last.getFullYear()}`;
+    document.getElementById('monthBadge').textContent = fl===ll?fl:`${fl} — ${ll}`;
+  }
+}
+
+function switchView(mode, btn){
+  viewMode=mode;
+  document.querySelectorAll('#viewPillMonth,#viewPillAccum').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(mode==='accum') currentMonthKey='all';
+  buildMonthFilter();
+  renderGastosAll();
+}
+
+function switchCompChart(mode, btn){
+  compChartMode=mode;
+  document.querySelectorAll('#monthlyCompPanel .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMonthlyComp();
+}
+
+/* ── Main render ── */
+function renderGastosAll(){
+  const active=getActiveData();
+  const gastos=active.filter(r=>r.tipo==='Gastos');
+  const ingresos=active.filter(r=>r.tipo==='Ingreso');
+  const tG=gastos.reduce((s,r)=>s+r.monto,0);
+  const tI=ingresos.reduce((s,r)=>s+r.monto,0);
+  const bal=tI-tG;
+
+  // KPIs
+  document.getElementById('kpi-income').textContent=fmtG(tI);
+  const mk=currentMonthKey==='all'?'Todos los meses':monthLabel(currentMonthKey);
+  document.getElementById('kpi-income-sub').textContent=`${ingresos.length} movimientos · ${mk}`;
+  document.getElementById('kpi-expense').textContent=fmtG(tG);
+  document.getElementById('kpi-expense-sub').textContent=`${gastos.length} movimientos · ${mk}`;
+  const bEl=document.getElementById('kpi-balance');
+  bEl.textContent=fmtG(Math.abs(bal));
+  bEl.style.color=bal>=0?'var(--income)':'var(--expense)';
+  document.getElementById('kpi-balance-sub').textContent=bal>=0?'Superávit ✓':'Déficit ✗';
+  document.getElementById('kpi-txcount').textContent=active.length;
+  document.getElementById('kpi-txcount-sub').textContent=`${gastos.length} gastos · ${ingresos.length} ingresos`;
+
+  // Monthly comparison chart visibility
+  const compPanel=document.getElementById('monthlyCompPanel');
+  compPanel.style.display=viewMode==='accum'?'block':'none';
+  if(viewMode==='accum') renderMonthlyComp();
+
+  // Main chart title
+  document.getElementById('mainChartTitle').textContent=
+    currentMonthKey==='all'?'Gastos del Período':`Gastos — ${monthLabel(currentMonthKey)}`;
+
+  renderMainChart(gastos);
+  renderCategories(gastos);
+  renderSubcats(gastos);
+  renderIncomeChart(ingresos);
+  renderTransactions(active);
+}
+
+/* ── Monthly comparison chart ── */
+function renderMonthlyComp(){
+  const keys=getMonthKeys();
+  const labels=keys.map(monthLabel);
+  const gastosData=keys.map(k=>allData.filter(r=>r.tipo==='Gastos'&&monthKey(r.date)===k).reduce((s,r)=>s+r.monto,0));
+  const ingData=keys.map(k=>allData.filter(r=>r.tipo==='Ingreso'&&monthKey(r.date)===k).reduce((s,r)=>s+r.monto,0));
+  const balData=keys.map((_,i)=>ingData[i]-gastosData[i]);
+
+  const ctx=document.getElementById('monthlyCompChart').getContext('2d');
+  if(monthlyCompInst) monthlyCompInst.destroy();
+
+  const baseOpts={
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:true,position:'bottom',labels:{color:'#64748b',font:{family:'Roboto',size:10},boxWidth:10,padding:10}},
+      tooltip:{backgroundColor:'#111827',borderColor:'#1e2d45',borderWidth:1,titleColor:'#f1f5f9',bodyColor:'#94a3b8',
+        callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtG(ctx.parsed.y)}`}}
+    },
+    scales:{
+      x:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{family:'Roboto',size:11}}},
+      y:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{family:'Roboto',size:10},callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':v)}}
+    }
+  };
+
+  if(compChartMode==='grouped'){
+    monthlyCompInst=new Chart(ctx,{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'Ingresos',data:ingData,backgroundColor:'rgba(16,185,129,.2)',borderColor:'#10b981',borderWidth:1.5,borderRadius:4},
+        {label:'Gastos',data:gastosData,backgroundColor:'rgba(239,68,68,.2)',borderColor:'#ef4444',borderWidth:1.5,borderRadius:4},
+        {label:'Balance',data:balData,backgroundColor:balData.map(v=>v>=0?'rgba(245,158,11,.2)':'rgba(239,68,68,.1)'),borderColor:balData.map(v=>v>=0?'#f59e0b':'#ef4444'),borderWidth:1.5,borderRadius:4},
+      ]},
+      options:baseOpts
+    });
+  } else {
+    monthlyCompInst=new Chart(ctx,{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'Ingresos',data:ingData,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.1)',borderWidth:2,tension:.4,pointRadius:4,fill:false},
+        {label:'Gastos',data:gastosData,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.1)',borderWidth:2,tension:.4,pointRadius:4,fill:false},
+        {label:'Balance',data:balData,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.08)',borderWidth:2,tension:.4,pointRadius:4,fill:true},
+      ]},
+      options:baseOpts
+    });
+  }
+}
+
+function chartOpts(){
+  return{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{backgroundColor:'#111827',borderColor:'#1e2d45',borderWidth:1,titleColor:'#f1f5f9',bodyColor:'#94a3b8',
+        callbacks:{label:ctx=>` ${fmtG(ctx.parsed.y)}`}}
+    },
+    scales:{
+      x:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{family:'Roboto',size:10}}},
+      y:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{family:'Roboto',size:10},callback:v=>'$'+(v>=1000?(v/1000).toFixed(1)+'k':v)}}
+    }
+  };
+}
+
+function renderMainChart(gastos){
+  const ctx=document.getElementById('mainChart').getContext('2d');
+  if(mainChartInst) mainChartInst.destroy();
+  if(chartMode==='daily'){
+    const dm={};
+    gastos.forEach(r=>{
+      const label=viewMode==='accum'
+        ? monthLabel(monthKey(r.date))
+        : String(r.date.getDate());
+      dm[label]=(dm[label]||0)+r.monto;
+    });
+    // Sort keys properly
+    const keys=viewMode==='accum'
+      ? getMonthKeys().map(monthLabel).filter(l=>dm[l]!==undefined)
+      : Object.keys(dm).sort((a,b)=>+a-+b);
+    mainChartInst=new Chart(ctx,{type:'bar',data:{labels:keys,datasets:[{label:'Gastos',data:keys.map(k=>dm[k]||0),backgroundColor:'rgba(239,68,68,.15)',borderColor:'#ef4444',borderWidth:1.5,borderRadius:4}]},options:chartOpts()});
+  } else {
+    const cm={};
+    gastos.forEach(r=>{const c=cleanCat(r.categoria);cm[c]=(cm[c]||0)+r.monto;});
+    const cats=Object.entries(cm).sort((a,b)=>b[1]-a[1]);
+    mainChartInst=new Chart(ctx,{type:'bar',data:{labels:cats.map(c=>c[0]),datasets:[{label:'Gastos',data:cats.map(c=>c[1]),backgroundColor:cats.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]+'33'),borderColor:cats.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]),borderWidth:1.5,borderRadius:4}]},options:chartOpts()});
+  }
+}
+
+function switchChart(mode,btn){
+  chartMode=mode;
+  document.querySelectorAll('.panel-header .pill:not(#viewPillMonth):not(#viewPillAccum)').forEach(b=>{
+    if(b.closest('#monthlyCompPanel')) return;
+    b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  renderMainChart(getActiveData().filter(r=>r.tipo==='Gastos'));
+}
+
+function renderCategories(gastos){
+  const cm={};gastos.forEach(r=>{const c=cleanCat(r.categoria);cm[c]=(cm[c]||0)+r.monto;});
+  const total=gastos.reduce((s,r)=>s+r.monto,0);
+  const cats=Object.entries(cm).sort((a,b)=>b[1]-a[1]);
+  const c=document.getElementById('catList'); c.innerHTML='';
+  if(!cats.length){c.innerHTML='<p style="color:var(--muted);font-size:.8rem">Sin datos</p>';return;}
+  cats.forEach(([name,amount],i)=>{
+    const pct=total>0?(amount/total*100):0;
+    const color=CAT_COLORS[i%CAT_COLORS.length];
+    c.innerHTML+=`<div class="cat-item">
+      <div class="cat-header">
+        <div class="cat-name"><div class="cat-dot" style="background:${color}"></div>${name}</div>
+        <div class="cat-amounts"><span class="cat-total">${fmtG(amount)}</span><span class="cat-pct">${pct.toFixed(1)}%</span></div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  });
+}
+
+function renderSubcats(gastos){
+  const sm={};gastos.forEach(r=>{if(!r.subcat)return;sm[r.subcat]=(sm[r.subcat]||0)+r.monto;});
+  const subs=Object.entries(sm).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const c=document.getElementById('subCatContent');
+  if(!subs.length){c.innerHTML='<p style="color:var(--muted);font-size:.8rem">—</p>';return;}
+  c.innerHTML=`<table class="sub-table"><thead><tr><th>Subcategoría</th><th>Total</th></tr></thead><tbody>
+    ${subs.map(([name,amount])=>`<tr><td>${name}</td><td>${fmtG(amount)}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+function renderIncomeChart(ingresos){
+  const ctx=document.getElementById('incomeChart').getContext('2d');
+  if(incomeChartInst) incomeChartInst.destroy();
+  const cm={};ingresos.forEach(r=>{const c=cleanCat(r.categoria);cm[c]=(cm[c]||0)+r.monto;});
+  const cats=Object.entries(cm).sort((a,b)=>b[1]-a[1]);
+  if(!cats.length){document.getElementById('incomeDetail').textContent='—';return;}
+  const total=cats.reduce((s,[,v])=>s+v,0);
+  incomeChartInst=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:cats.map(c=>c[0]),datasets:[{data:cats.map(c=>c[1]),backgroundColor:['#10b981','#f59e0b','#06b6d4','#8b5cf6'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{
+        legend:{position:'bottom',labels:{color:'#64748b',font:{family:'Roboto',size:10},padding:8,boxWidth:10}},
+        tooltip:{backgroundColor:'#111827',borderColor:'#1e2d45',borderWidth:1,titleColor:'#f1f5f9',bodyColor:'#94a3b8',
+          callbacks:{label:ctx=>` ${fmtG(ctx.parsed)} (${(ctx.parsed/total*100).toFixed(1)}%)`}}
+      }
+    }
+  });
+  document.getElementById('incomeDetail').textContent=`Total: ${fmtG(total)}`;
+}
+
+function filterTx(type,btn){
+  filteredType=type;
+  document.querySelectorAll('.tx-filters .pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTransactions(getActiveData());
+}
+
+function renderTransactions(data){
+  const rows=(filteredType==='all'?data:data.filter(r=>r.tipo===filteredType))
+    .slice().sort((a,b)=>b.date-a.date);
+  document.getElementById('txCountLabel').textContent=`${rows.length} registros`;
+  const tbody=document.getElementById('txBody');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted)">Sin movimientos</td></tr>';return;}
+  tbody.innerHTML=rows.map(r=>{
+    const d=r.date;
+    const ds=`${d.getDate()} ${MONTH_ES[d.getMonth()].slice(0,3)}`;
+    const isInc=r.tipo==='Ingreso';
+    return `<tr>
+      <td><span class="tx-date">${ds}</span></td>
+      <td title="${r.nota||''}">${r.nota||'—'}</td>
+      <td title="${cleanCat(r.categoria)}" style="color:var(--muted);font-size:.78rem">${cleanCat(r.categoria)}</td>
+      <td title="${r.subcat||''}" style="color:var(--muted);font-size:.78rem">${r.subcat||'—'}</td>
+      <td><span class="badge ${isInc?'badge-income':'badge-expense'}">${r.tipo}</span></td>
+      <td style="color:${isInc?'var(--income)':'var(--expense)'}">${isInc?'+':'-'}${fmtG(r.monto)}</td>
+      <td>
+        <div class="tx-actions">
+          <button class="btn-icon edit" title="Editar" onclick="openEditModal('${r.id}')">✏️</button>
+          <button class="btn-icon del" title="Eliminar" onclick="deleteRow('${r.id}')">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ── Category catalog ── */
+const DEFAULT_CATALOG = {
+  Gastos: {
+    'Básicos':    ['Renta','Super','Comidas','Servicio','Carro','Salud','Transporte'],
+    'Personal':   ['Social','Ropa','Hogar','Subscipciones','TDC','Remesa','Danaly'],
+  },
+  Ingreso: {
+    'Salario':    ['Nómina','Bono'],
+    'Bonus':      ['Despensa','Restaurante'],
+    'Estacionamiento': [],
+  }
+};
+let catalog = loadCatalog();
+
+function getCats(tipo){ return Object.keys(catalog[tipo==='Ingreso'?'Ingreso':'Gastos']||{}); }
+function getSubcats(tipo, cat){ return (catalog[tipo==='Ingreso'?'Ingreso':'Gastos']||{})[cat]||[]; }
+
+function populateCatDropdown(tipo, selectedCat=''){
+  const sel=document.getElementById('mCategoria'); if(!sel) return;
+  const cats=getCats(tipo);
+  sel.innerHTML='<option value="">— Selecciona categoría —</option>'+
+    cats.map(c=>`<option value="${c}" ${c===selectedCat?'selected':''}>${c}</option>`).join('');
+  populateSubcatDropdown(tipo, selectedCat);
+}
+
+function populateSubcatDropdown(tipo, cat, selectedSub=''){
+  const sel=document.getElementById('mSubcat'); if(!sel) return;
+  const subs=getSubcats(tipo, cat);
+  sel.innerHTML='<option value="">— Sin subcategoría —</option>'+
+    subs.map(s=>`<option value="${s}" ${s===selectedSub?'selected':''}>${s}</option>`).join('');
+}
+
+function onTipoChange(){
+  const tipo=document.getElementById('mTipo').value;
+  populateCatDropdown(tipo);
+}
+function onCatChange(){
+  const tipo=document.getElementById('mTipo').value;
+  const cat=document.getElementById('mCategoria').value;
+  populateSubcatDropdown(tipo, cat);
+}
+
+function addNewCat(){
+  const name=document.getElementById('mNewCat').value.trim(); if(!name) return;
+  const tipo=document.getElementById('mTipo').value==='Ingreso'?'Ingreso':'Gastos';
+  if(!catalog[tipo]) catalog[tipo]={};
+  if(!catalog[tipo][name]) catalog[tipo][name]=[];
+  saveCatalog();
+  document.getElementById('mNewCat').value='';
+  populateCatDropdown(tipo, name);
+  showToast(`Categoría "${name}" agregada`);
+}
+
+function addNewSubcat(){
+  const name=document.getElementById('mNewSubcat').value.trim(); if(!name) return;
+  const tipo=document.getElementById('mTipo').value==='Ingreso'?'Ingreso':'Gastos';
+  const cat=document.getElementById('mCategoria').value; if(!cat){showToast('Selecciona una categoría primero','warn');return;}
+  if(!catalog[tipo][cat]) catalog[tipo][cat]=[];
+  if(!catalog[tipo][cat].includes(name)) catalog[tipo][cat].push(name);
+  saveCatalog();
+  document.getElementById('mNewSubcat').value='';
+  populateSubcatDropdown(tipo, cat, name);
+  showToast(`Subcategoría "${name}" agregada`);
+}
+
+/* ── CRUD ── */
+function deleteRow(id){
+  if(!confirm('¿Eliminar este movimiento?')) return;
+  allData=allData.filter(r=>r.id!==id);
+  saveGastos(); buildMonthFilter(); renderGastosAll();
+  showToast('Movimiento eliminado');
+}
+
+function openAddModal(){
+  document.getElementById('modalTitle').textContent='Agregar Movimiento';
+  document.getElementById('modalEditId').value='';
+  document.getElementById('mFecha').value=new Date().toISOString().slice(0,10);
+  document.getElementById('mMonto').value='';
+  document.getElementById('mTipo').value='Gastos';
+  document.getElementById('mNota').value='';
+  document.getElementById('mNewCat').value='';
+  document.getElementById('mNewSubcat').value='';
+  populateCatDropdown('Gastos');
+  document.getElementById('txModal').classList.add('open');
+}
+
+function openEditModal(id){
+  const r=allData.find(x=>x.id===id); if(!r) return;
+  document.getElementById('modalTitle').textContent='Editar Movimiento';
+  document.getElementById('modalEditId').value=id;
+  document.getElementById('mFecha').value=r.date.toISOString().slice(0,10);
+  document.getElementById('mMonto').value=r.monto;
+  document.getElementById('mTipo').value=r.tipo;
+  document.getElementById('mNota').value=r.nota||'';
+  document.getElementById('mNewCat').value='';
+  document.getElementById('mNewSubcat').value='';
+  const cat=cleanCat(r.categoria);
+  populateCatDropdown(r.tipo, cat);
+  populateSubcatDropdown(r.tipo, cat, r.subcat||'');
+  document.getElementById('txModal').classList.add('open');
+}
+
+function closeModal(){
+  document.getElementById('txModal').classList.remove('open');
+}
+
+function saveModal(){
+  const fecha=document.getElementById('mFecha').value;
+  const monto=parseFloat(document.getElementById('mMonto').value);
+  const tipo=document.getElementById('mTipo').value;
+  const categoria=document.getElementById('mCategoria').value.trim();
+  const subcat=document.getElementById('mSubcat').value.trim();
+  const nota=document.getElementById('mNota').value.trim();
+
+  if(!fecha||isNaN(monto)||monto<=0||!categoria){
+    showToast('Completa: Fecha, Monto y Categoría','warn'); return;
+  }
+
+  // Auto-add to catalog if new entry
+  const cKey=tipo==='Ingreso'?'Ingreso':'Gastos';
+  if(!catalog[cKey]) catalog[cKey]={};
+  if(!catalog[cKey][categoria]) catalog[cKey][categoria]=[];
+  if(subcat && !catalog[cKey][categoria].includes(subcat)) catalog[cKey][categoria].push(subcat);
+  saveCatalog();
+
+  const editId=document.getElementById('modalEditId').value;
+  if(editId){
+    const idx=allData.findIndex(r=>r.id===editId);
+    if(idx>-1) allData[idx]={...allData[idx],date:new Date(fecha),monto,tipo,categoria,subcat,nota,cuenta:''};
+  } else {
+    allData.push({id:crypto.randomUUID(),date:new Date(fecha),monto,tipo,categoria,subcat,nota,cuenta:''});
+  }
+
+  closeModal();
+  const isEdit=!!editId;
+  saveGastos(); buildMonthFilter(); renderGastosAll();
+  showToast(isEdit?'Movimiento actualizado':'Movimiento agregado');
+}
+
+// Close modal on overlay click
+document.getElementById('txModal').addEventListener('click',function(e){
+  if(e.target===this) closeModal();
+});
+
+function promptDeleteMonth(){
+  var keys = getMonthKeys();
+  if(!keys.length){ showToast('No hay datos para eliminar.','warn'); return; }
+  var existing = document.getElementById('deleteMonthModal');
+  if(existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'deleteMonthModal';
+  overlay.className = 'modal-overlay open';
+
+  // Build modal using DOM to avoid quote escaping issues
+  var modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.maxWidth = '340px';
+
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'modal-close';
+  closeBtn.textContent = '✕';
+  closeBtn.onclick = function(){ overlay.remove(); };
+  modal.appendChild(closeBtn);
+
+  var title = document.createElement('div');
+  title.className = 'modal-title';
+  title.style.color = 'var(--danger)';
+  title.textContent = '🗑 Eliminar mes';
+  modal.appendChild(title);
+
+  var desc = document.createElement('p');
+  desc.style.cssText = 'font-size:.82rem;color:var(--muted);margin-bottom:1rem;';
+  desc.textContent = 'Selecciona el mes a borrar:';
+  modal.appendChild(desc);
+
+  var list = document.createElement('div');
+  list.style.cssText = 'display:flex;flex-direction:column;gap:.4rem;';
+  keys.forEach(function(k){
+    var count = allData.filter(function(r){ return monthKey(r.date)===k; }).length;
+    var btn = document.createElement('button');
+    btn.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.7rem 1rem;text-align:left;font-family:Roboto,sans-serif;font-size:.85rem;font-weight:600;color:var(--text);cursor:pointer;width:100%;';
+    btn.innerHTML = monthLabel(k) + '<span style="float:right;font-size:.72rem;color:var(--muted);font-weight:400;">' + count + ' movimientos</span>';
+    btn.addEventListener('mouseenter', function(){ this.style.borderColor='#ef4444'; this.style.color='#ef4444'; });
+    btn.addEventListener('mouseleave', function(){ this.style.borderColor='var(--border)'; this.style.color='var(--text)'; });
+    btn.addEventListener('click', function(){ confirmDeleteMonth(k); });
+    list.appendChild(btn);
+  });
+  modal.appendChild(list);
+
+  var actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  actions.style.marginTop = '1rem';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.onclick = function(){ overlay.remove(); };
+  actions.appendChild(cancelBtn);
+  modal.appendChild(actions);
+
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function confirmDeleteMonth(key){
+  var modal = document.getElementById('deleteMonthModal');
+  if(modal) modal.remove();
+  if(!confirm('Eliminar todos los datos de ' + monthLabel(key) + '?')) return;
+  allData = allData.filter(function(r){ return monthKey(r.date) !== key; });
+  if(currentMonthKey === key) currentMonthKey = 'all';
+  saveGastos(); buildMonthFilter(); renderGastosAll();
+  showToast(monthLabel(key) + ' eliminado', 'success');
+}
+
+
+</script>
+</body>
+</html>
