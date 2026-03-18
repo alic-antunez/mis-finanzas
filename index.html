@@ -1197,7 +1197,7 @@ function selectFTColor(color){
   });
 }
 
-function addFT(){
+async function addFT(){
   const name=document.getElementById('ftNewName').value.trim();
   if(!name){ alert('Escribe el nombre de la fintech.'); return; }
   if(FINTECHS.includes(name)){ alert('Ya existe una fintech con ese nombre.'); return; }
@@ -1214,13 +1214,13 @@ function addFT(){
   // Add null column to all months
   savData.forEach(row=>{ row[name]=null; });
 
-  saveFTConfig(); saveData();
+  await saveFTConfig(); await saveData();
   document.getElementById('ftManagerModal').remove();
   renderAhorrosAll();
   showToast(`${name} agregada`);
 }
 
-function deleteFT(name){
+async function deleteFT(name){
   if(FINTECHS.length<=1){ alert('Debes tener al menos una fintech.'); return; }
   if(!confirm(`¿Eliminar "${name}" y todos sus datos? Esta acción no se puede deshacer.`)) return;
 
@@ -1233,7 +1233,7 @@ function deleteFT(name){
 
   savData.forEach(row=>{ delete row[name]; });
 
-  saveFTConfig(); saveData();
+  await saveFTConfig(); await saveData();
   document.getElementById('ftManagerModal').remove();
   renderAhorrosAll();
   showToast(`${name} eliminada`);
@@ -1265,12 +1265,12 @@ function renderTable(){
   });
 }
 
-function handleInput(el){
+async function handleInput(el){
   const i=parseInt(el.dataset.row), f=el.dataset.field;
   const raw=el.value.replace(/[^0-9.]/g,'');
   savData[i][f]=raw===''?null:parseFloat(raw);
   if(raw!=='') el.value=Math.round(parseFloat(raw));
-  saveData(); renderAhorrosAll();
+  await saveData(); renderAhorrosAll();
 }
 
 function renderSummary(){
@@ -1565,11 +1565,11 @@ const DEMO_MARZO = [
 document.getElementById('fileInput').addEventListener('change',function(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=function(ev){
+  reader.onload=async function(ev){
     const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd'});
-    parseRows(rows); saveGastos(); buildMonthFilter(); renderGastosAll();
+    parseRows(rows); await saveGastos(); buildMonthFilter(); renderGastosAll();
   };
   reader.readAsArrayBuffer(file);
   e.target.value='';
@@ -1926,34 +1926,34 @@ function onCatChange(){
   populateSubcatDropdown(tipo, cat);
 }
 
-function addNewCat(){
+async async function addNewCat(){
   const name=document.getElementById('mNewCat').value.trim(); if(!name) return;
   const tipo=document.getElementById('mTipo').value==='Ingreso'?'Ingreso':'Gastos';
   if(!catalog[tipo]) catalog[tipo]={};
   if(!catalog[tipo][name]) catalog[tipo][name]=[];
-  saveCatalog();
+  await saveCatalog();
   document.getElementById('mNewCat').value='';
   populateCatDropdown(tipo, name);
   showToast(`Categoría "${name}" agregada`);
 }
 
-function addNewSubcat(){
+async function addNewSubcat(){
   const name=document.getElementById('mNewSubcat').value.trim(); if(!name) return;
   const tipo=document.getElementById('mTipo').value==='Ingreso'?'Ingreso':'Gastos';
   const cat=document.getElementById('mCategoria').value; if(!cat){showToast('Selecciona una categoría primero','warn');return;}
   if(!catalog[tipo][cat]) catalog[tipo][cat]=[];
   if(!catalog[tipo][cat].includes(name)) catalog[tipo][cat].push(name);
-  saveCatalog();
+  await saveCatalog();
   document.getElementById('mNewSubcat').value='';
   populateSubcatDropdown(tipo, cat, name);
   showToast(`Subcategoría "${name}" agregada`);
 }
 
 /* ── CRUD ── */
-function deleteRow(id){
+async function deleteRow(id){
   if(!confirm('¿Eliminar este movimiento?')) return;
   allData=allData.filter(r=>r.id!==id);
-  saveGastos(); buildMonthFilter(); renderGastosAll();
+  await saveGastos(); buildMonthFilter(); renderGastosAll();
   showToast('Movimiento eliminado');
 }
 
@@ -1990,7 +1990,7 @@ function closeModal(){
   document.getElementById('txModal').classList.remove('open');
 }
 
-function saveModal(){
+async function saveModal(){
   const fecha=document.getElementById('mFecha').value;
   const monto=parseFloat(document.getElementById('mMonto').value);
   const tipo=document.getElementById('mTipo').value;
@@ -2007,7 +2007,7 @@ function saveModal(){
   if(!catalog[cKey]) catalog[cKey]={};
   if(!catalog[cKey][categoria]) catalog[cKey][categoria]=[];
   if(subcat && !catalog[cKey][categoria].includes(subcat)) catalog[cKey][categoria].push(subcat);
-  saveCatalog();
+  await saveCatalog();
 
   const editId=document.getElementById('modalEditId').value;
   if(editId){
@@ -2019,7 +2019,7 @@ function saveModal(){
 
   closeModal();
   const isEdit=!!editId;
-  saveGastos(); buildMonthFilter(); renderGastosAll();
+  await saveGastos(); buildMonthFilter(); renderGastosAll();
   showToast(isEdit?'Movimiento actualizado':'Movimiento agregado');
 }
 
@@ -2089,13 +2089,13 @@ function promptDeleteMonth(){
   document.body.appendChild(overlay);
 }
 
-function confirmDeleteMonth(key){
+async function confirmDeleteMonth(key){
   var modal = document.getElementById('deleteMonthModal');
   if(modal) modal.remove();
   if(!confirm('Eliminar todos los datos de ' + monthLabel(key) + '?')) return;
   allData = allData.filter(function(r){ return monthKey(r.date) !== key; });
   if(currentMonthKey === key) currentMonthKey = 'all';
-  saveGastos(); buildMonthFilter(); renderGastosAll();
+  await saveGastos(); buildMonthFilter(); renderGastosAll();
   showToast(monthLabel(key) + ' eliminado', 'success');
 }
 
