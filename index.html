@@ -660,6 +660,7 @@ td input::placeholder{color:var(--border);}
       <div class="month-pill" id="monthBadge">— Sin datos —</div>
       <label class="upload-btn" for="fileInput">↑ Importar Excel</label>
       <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <button class="upload-btn" onclick="openExportModal()" style="background:transparent;border:1px solid var(--accent3);color:var(--accent3);">↓ Exportar</button>
     </div>
     <!-- User -->
     <div id="userChip" style="display:none;">
@@ -2027,6 +2028,191 @@ async function saveModal(){
 document.getElementById('txModal').addEventListener('click',function(e){
   if(e.target===this) closeModal();
 });
+
+/* ── EXPORT ── */
+function openExportModal(){
+  var keys = getMonthKeys();
+  if(!keys.length){ showToast('No hay datos para exportar.','warn'); return; }
+
+  var existing = document.getElementById('exportModal');
+  if(existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'exportModal';
+  overlay.className = 'modal-overlay open';
+
+  var modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.maxWidth = '400px';
+
+  // Handle bar
+  var handle = document.createElement('div');
+  handle.style.cssText = 'width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto .9rem;';
+  modal.appendChild(handle);
+
+  // Close button
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'modal-close';
+  closeBtn.textContent = '✕';
+  closeBtn.onclick = function(){ overlay.remove(); };
+  modal.appendChild(closeBtn);
+
+  // Title
+  var title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = '↓ Exportar a Excel';
+  modal.appendChild(title);
+
+  // Description
+  var desc = document.createElement('p');
+  desc.style.cssText = 'font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5;';
+  desc.textContent = 'Selecciona los meses a exportar. El archivo resultante puede reimportarse para restaurar tus datos.';
+  modal.appendChild(desc);
+
+  // Select all checkbox
+  var selectAllWrap = document.createElement('div');
+  selectAllWrap.style.cssText = 'display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;background:var(--surface2);border-radius:8px;margin-bottom:.6rem;border:1px solid var(--border);cursor:pointer;';
+  var selectAllChk = document.createElement('input');
+  selectAllChk.type = 'checkbox';
+  selectAllChk.id = 'exportSelectAll';
+  selectAllChk.checked = true;
+  selectAllChk.style.cssText = 'accent-color:var(--accent3);width:15px;height:15px;cursor:pointer;';
+  var selectAllLbl = document.createElement('label');
+  selectAllLbl.htmlFor = 'exportSelectAll';
+  selectAllLbl.style.cssText = 'font-size:.8rem;font-weight:700;cursor:pointer;flex:1;';
+  selectAllLbl.textContent = 'Seleccionar todos';
+  selectAllWrap.appendChild(selectAllChk);
+  selectAllWrap.appendChild(selectAllLbl);
+  modal.appendChild(selectAllWrap);
+
+  // Month checkboxes
+  var list = document.createElement('div');
+  list.style.cssText = 'display:flex;flex-direction:column;gap:.35rem;max-height:260px;overflow-y:auto;margin-bottom:1rem;';
+  list.id = 'exportMonthList';
+
+  keys.forEach(function(k){
+    var count = allData.filter(function(r){ return monthKey(r.date)===k; }).length;
+    var ingresos = allData.filter(function(r){ return monthKey(r.date)===k && r.tipo==='Ingreso'; }).length;
+    var gastos = allData.filter(function(r){ return monthKey(r.date)===k && r.tipo==='Gastos'; }).length;
+
+    var row = document.createElement('label');
+    row.style.cssText = 'display:flex;align-items:center;gap:.7rem;padding:.55rem .8rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:border-color .15s;';
+    row.onmouseenter = function(){ this.style.borderColor='var(--accent3)'; };
+    row.onmouseleave = function(){ this.style.borderColor='var(--border)'; };
+
+    var chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.value = k;
+    chk.className = 'export-month-chk';
+    chk.checked = true;
+    chk.style.cssText = 'accent-color:var(--accent3);width:15px;height:15px;cursor:pointer;flex-shrink:0;';
+
+    var info = document.createElement('div');
+    info.style.cssText = 'flex:1;';
+    info.innerHTML = '<div style="font-size:.83rem;font-weight:600;">' + monthLabel(k) + '</div>' +
+      '<div style="font-size:.7rem;color:var(--muted);margin-top:.1rem;">' +
+      count + ' movimientos · <span style="color:var(--income);">+' + ingresos + ' ing</span> · <span style="color:var(--expense);">-' + gastos + ' gas</span></div>';
+
+    row.appendChild(chk);
+    row.appendChild(info);
+    list.appendChild(row);
+  });
+  modal.appendChild(list);
+
+  // Select all toggle logic
+  selectAllChk.addEventListener('change', function(){
+    document.querySelectorAll('.export-month-chk').forEach(function(c){ c.checked = selectAllChk.checked; });
+  });
+  list.addEventListener('change', function(){
+    var all = document.querySelectorAll('.export-month-chk');
+    var checked = document.querySelectorAll('.export-month-chk:checked');
+    selectAllChk.checked = all.length === checked.length;
+    selectAllChk.indeterminate = checked.length > 0 && checked.length < all.length;
+  });
+
+  // Actions
+  var actions = document.createElement('div');
+  actions.className = 'modal-actions';
+
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.onclick = function(){ overlay.remove(); };
+
+  var exportBtn = document.createElement('button');
+  exportBtn.className = 'btn-primary';
+  exportBtn.style.background = 'var(--accent3)';
+  exportBtn.textContent = '↓ Descargar Excel';
+  exportBtn.onclick = function(){
+    var selected = Array.from(document.querySelectorAll('.export-month-chk:checked')).map(function(c){ return c.value; });
+    if(!selected.length){ showToast('Selecciona al menos un mes','warn'); return; }
+    exportToExcel(selected);
+    overlay.remove();
+  };
+
+  actions.appendChild(cancelBtn);
+  actions.appendChild(exportBtn);
+  modal.appendChild(actions);
+
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function exportToExcel(selectedKeys){
+  // Filter data to selected months, sorted by date ascending
+  var rows = allData
+    .filter(function(r){ return selectedKeys.includes(monthKey(r.date)); })
+    .sort(function(a,b){ return a.date - b.date; });
+
+  if(!rows.length){ showToast('No hay datos en los meses seleccionados','warn'); return; }
+
+  // Build worksheet data — same format as import
+  // Header: Según un período, Cuentas, Categoría, Subcategorías, Nota, MXN, Ingreso/Gasto
+  var wsData = [
+    ['Según un período','Cuentas','Categoría','Subcategorías','Nota','MXN','Ingreso/Gasto']
+  ];
+
+  rows.forEach(function(r){
+    var d = r.date;
+    var dateStr = d.getFullYear() + '-' +
+      String(d.getMonth()+1).padStart(2,'0') + '-' +
+      String(d.getDate()).padStart(2,'0');
+    wsData.push([
+      dateStr,
+      r.cuenta || '',
+      r.categoria || '',
+      r.subcat || '',
+      r.nota || '',
+      r.monto,
+      r.tipo
+    ]);
+  });
+
+  // Create workbook using SheetJS
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws['!cols'] = [
+    {wch:14}, // fecha
+    {wch:12}, // cuenta
+    {wch:22}, // categoria
+    {wch:20}, // subcat
+    {wch:30}, // nota
+    {wch:12}, // monto
+    {wch:14}, // tipo
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Movimientos');
+
+  // Filename: mis-finanzas_[meses].xlsx
+  var monthNames = selectedKeys.map(function(k){ return monthLabel(k).replace(' ',''); }).join('_');
+  var filename = 'mis-finanzas_' + monthNames + '.xlsx';
+
+  XLSX.writeFile(wb, filename);
+  showToast('Exportado: ' + filename);
+}
 
 function promptDeleteMonth(){
   var keys = getMonthKeys();
