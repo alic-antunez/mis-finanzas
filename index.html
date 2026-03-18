@@ -1926,7 +1926,7 @@ function onCatChange(){
   populateSubcatDropdown(tipo, cat);
 }
 
-async async function addNewCat(){
+async function addNewCat(){
   const name=document.getElementById('mNewCat').value.trim(); if(!name) return;
   const tipo=document.getElementById('mTipo').value==='Ingreso'?'Ingreso':'Gastos';
   if(!catalog[tipo]) catalog[tipo]={};
