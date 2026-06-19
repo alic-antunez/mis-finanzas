@@ -661,6 +661,7 @@ td input::placeholder{color:var(--border);}
       <label class="upload-btn" for="fileInput">↑ Importar Excel</label>
       <input type="file" id="fileInput" accept=".xlsx,.xls">
       <button class="upload-btn" onclick="openExportModal()" style="background:transparent;border:1px solid var(--accent3);color:var(--accent3);">↓ Exportar</button>
+      <button class="upload-btn" onclick="openCatManager()" style="background:transparent;border:1px solid var(--accent);color:var(--accent);">⚙ Categorías</button>
     </div>
     <!-- User -->
     <div id="userChip" style="display:none;">
@@ -799,7 +800,7 @@ td input::placeholder{color:var(--border);}
 
   <div class="gas-bottom" style="grid-template-columns:1fr 1fr;">
     <div class="panel">
-      <div class="panel-title">Subcategorías Top</div>
+      <div class="panel-title">Subcategorías</div>
       <div id="subCatContent"><p style="color:var(--muted);font-size:.8rem">—</p></div>
     </div>
     <div class="panel">
@@ -1821,13 +1822,73 @@ function renderCategories(gastos){
 }
 
 function renderSubcats(gastos){
-  const sm={};gastos.forEach(r=>{if(!r.subcat)return;sm[r.subcat]=(sm[r.subcat]||0)+r.monto;});
-  const subs=Object.entries(sm).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  const c=document.getElementById('subCatContent');
-  if(!subs.length){c.innerHTML='<p style="color:var(--muted);font-size:.8rem">—</p>';return;}
-  c.innerHTML=`<table class="sub-table"><thead><tr><th>Subcategoría</th><th>Total</th></tr></thead><tbody>
-    ${subs.map(([name,amount])=>`<tr><td>${name}</td><td>${fmtG(amount)}</td></tr>`).join('')}
-  </tbody></table>`;
+  const c = document.getElementById('subCatContent');
+  if(!gastos.length){ c.innerHTML='<p style="color:var(--muted);font-size:.8rem">—</p>'; return; }
+
+  // How many distinct months are in the active data
+  const monthSet = new Set(gastos.map(r => monthKey(r.date)));
+  const numMonths = Math.max(monthSet.size, 1);
+
+  // Build: { categoria: { subcat: total } }
+  const tree = {};
+  gastos.forEach(r => {
+    const cat = cleanCat(r.categoria) || '—';
+    const sub = r.subcat || '(sin subcat)';
+    if(!tree[cat]) tree[cat] = {};
+    tree[cat][sub] = (tree[cat][sub] || 0) + r.monto;
+  });
+
+  // Sort categories by their total descending
+  const catsSorted = Object.entries(tree).sort((a,b) => {
+    const ta = Object.values(a[1]).reduce((s,v)=>s+v,0);
+    const tb = Object.values(b[1]).reduce((s,v)=>s+v,0);
+    return tb - ta;
+  });
+
+  let html = `<div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:.78rem;">
+      <thead>
+        <tr style="color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;">
+          <th style="text-align:left;padding:.4rem .5rem;font-weight:600;">Subcategoría</th>
+          <th style="text-align:right;padding:.4rem .5rem;font-weight:600;">Total</th>
+          <th style="text-align:right;padding:.4rem .5rem;font-weight:600;">Mensual</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  catsSorted.forEach(([catName, subs], ci) => {
+    const catTotal = Object.values(subs).reduce((s,v)=>s+v,0);
+    const color = CAT_COLORS[ci % CAT_COLORS.length];
+
+    // Category header row
+    html += `<tr style="background:var(--surface2);">
+      <td colspan="3" style="padding:.45rem .5rem;font-weight:700;font-size:.76rem;color:${color};border-top:1px solid var(--border);">
+        ${catName}
+        <span style="font-weight:400;color:var(--muted);margin-left:.5rem;">${fmtG(catTotal)}</span>
+      </td>
+    </tr>`;
+
+    // Subcat rows sorted by amount
+    Object.entries(subs).sort((a,b)=>b[1]-a[1]).forEach(([subName, amount]) => {
+      const monthly = amount / numMonths;
+      html += `<tr style="border-top:1px solid var(--border)20;">
+        <td style="padding:.4rem .5rem .4rem 1.2rem;color:var(--text);">${subName}</td>
+        <td style="padding:.4rem .5rem;text-align:right;color:var(--text);font-weight:500;">${fmtG(amount)}</td>
+        <td style="padding:.4rem .5rem;text-align:right;color:var(--muted);">${fmtG(monthly)}</td>
+      </tr>`;
+    });
+  });
+
+  html += `</tbody></table></div>`;
+
+  // Footer note when viewing multiple months
+  if(numMonths > 1){
+    html += `<div style="font-size:.68rem;color:var(--muted);margin-top:.6rem;text-align:right;">
+      Mensual = promedio de ${numMonths} mes${numMonths>1?'es':''}
+    </div>`;
+  }
+
+  c.innerHTML = html;
 }
 
 function renderIncomeChart(ingresos){
@@ -2028,6 +2089,192 @@ async function saveModal(){
 document.getElementById('txModal').addEventListener('click',function(e){
   if(e.target===this) closeModal();
 });
+
+/* ── CATEGORY MANAGER ── */
+function openCatManager(){
+  var existing = document.getElementById('catManagerModal');
+  if(existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'catManagerModal';
+  overlay.className = 'modal-overlay open';
+
+  var modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.maxWidth = '480px';
+
+  function buildContent(){
+    modal.innerHTML = '';
+
+    var handle = document.createElement('div');
+    handle.style.cssText = 'width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto .9rem;';
+    modal.appendChild(handle);
+
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'modal-close';
+    closeBtn.textContent = '✕';
+    closeBtn.onclick = function(){ overlay.remove(); };
+    modal.appendChild(closeBtn);
+
+    var title = document.createElement('div');
+    title.className = 'modal-title';
+    title.textContent = '⚙ Gestionar Categorías';
+    modal.appendChild(title);
+
+    // Tipo tabs
+    var tabWrap = document.createElement('div');
+    tabWrap.style.cssText = 'display:flex;gap:.4rem;margin-bottom:1rem;';
+    ['Gastos','Ingreso'].forEach(function(tipo, i){
+      var btn = document.createElement('button');
+      btn.className = 'pill' + (i===0?' active':'');
+      btn.textContent = tipo;
+      btn.dataset.tipo = tipo;
+      btn.onclick = function(){
+        tabWrap.querySelectorAll('.pill').forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        renderCatList(tipo);
+      };
+      tabWrap.appendChild(btn);
+    });
+    modal.appendChild(tabWrap);
+
+    var listWrap = document.createElement('div');
+    listWrap.id = 'catMgrList';
+    listWrap.style.cssText = 'max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;';
+    modal.appendChild(listWrap);
+
+    var cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-secondary';
+    cancelBtn.style.cssText = 'margin-top:1rem;width:100%;';
+    cancelBtn.textContent = 'Cerrar';
+    cancelBtn.onclick = function(){ overlay.remove(); };
+    modal.appendChild(cancelBtn);
+
+    renderCatList('Gastos');
+  }
+
+  function renderCatList(tipo){
+    var listWrap = document.getElementById('catMgrList');
+    listWrap.innerHTML = '';
+    var cats = Object.keys(catalog[tipo] || {});
+    if(!cats.length){
+      listWrap.innerHTML = '<p style="color:var(--muted);font-size:.8rem;padding:.5rem;">No hay categorías para este tipo.</p>';
+      return;
+    }
+    cats.sort().forEach(function(cat){
+      var subs = catalog[tipo][cat] || [];
+
+      // Category row
+      var catRow = document.createElement('div');
+      catRow.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;';
+
+      var catHeader = document.createElement('div');
+      catHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:.6rem .8rem;cursor:pointer;';
+
+      var catLeft = document.createElement('div');
+      catLeft.style.cssText = 'display:flex;align-items:center;gap:.5rem;font-size:.83rem;font-weight:700;';
+
+      var arrow = document.createElement('span');
+      arrow.textContent = '▶';
+      arrow.style.cssText = 'font-size:.6rem;color:var(--muted);transition:transform .2s;';
+
+      var catName = document.createElement('span');
+      catName.textContent = cat;
+
+      var subBadge = document.createElement('span');
+      subBadge.style.cssText = 'font-size:.68rem;color:var(--muted);font-weight:400;';
+      subBadge.textContent = subs.length + ' subcat' + (subs.length !== 1 ? 's' : '');
+
+      catLeft.appendChild(arrow);
+      catLeft.appendChild(catName);
+      catLeft.appendChild(subBadge);
+
+      var delCatBtn = document.createElement('button');
+      delCatBtn.style.cssText = 'background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:.7rem;padding:.2rem .5rem;cursor:pointer;transition:all .15s;';
+      delCatBtn.textContent = '✕ Eliminar';
+      delCatBtn.onmouseenter = function(){ this.style.borderColor='var(--danger)'; this.style.color='var(--danger)'; };
+      delCatBtn.onmouseleave = function(){ this.style.borderColor='var(--border)'; this.style.color='var(--muted)'; };
+      delCatBtn.onclick = function(e){
+        e.stopPropagation();
+        deleteCat(tipo, cat, renderCatList);
+      };
+
+      catHeader.appendChild(catLeft);
+      catHeader.appendChild(delCatBtn);
+      catRow.appendChild(catHeader);
+
+      // Subcategories (collapsible)
+      var subList = document.createElement('div');
+      subList.style.cssText = 'display:none;border-top:1px solid var(--border);padding:.4rem .8rem;display:none;flex-direction:column;gap:.25rem;';
+
+      subs.forEach(function(sub){
+        var subRow = document.createElement('div');
+        subRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:.3rem .2rem;';
+
+        var subName = document.createElement('span');
+        subName.style.cssText = 'font-size:.78rem;color:var(--text);padding-left:.8rem;';
+        subName.textContent = '└ ' + sub;
+
+        var delSubBtn = document.createElement('button');
+        delSubBtn.style.cssText = 'background:transparent;border:none;color:var(--muted);font-size:.7rem;cursor:pointer;padding:.1rem .3rem;border-radius:4px;transition:color .15s;';
+        delSubBtn.textContent = '✕';
+        delSubBtn.title = 'Eliminar subcategoría';
+        delSubBtn.onmouseenter = function(){ this.style.color='var(--danger)'; };
+        delSubBtn.onmouseleave = function(){ this.style.color='var(--muted)'; };
+        delSubBtn.onclick = function(){ deleteSubcat(tipo, cat, sub, renderCatList); };
+
+        subRow.appendChild(subName);
+        subRow.appendChild(delSubBtn);
+        subList.appendChild(subRow);
+      });
+
+      catRow.appendChild(subList);
+
+      // Toggle expand
+      catHeader.onclick = function(){
+        var isOpen = subList.style.display === 'flex';
+        subList.style.display = isOpen ? 'none' : 'flex';
+        arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
+      };
+
+      listWrap.appendChild(catRow);
+    });
+  }
+
+  buildContent();
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+async function deleteCat(tipo, cat, refresh){
+  var txCount = allData.filter(function(r){
+    return r.tipo === tipo && cleanCat(r.categoria) === cat;
+  }).length;
+  var msg = txCount > 0
+    ? 'Eliminar "' + cat + '"? Tiene ' + txCount + ' movimiento(s) que quedarán sin categoría.'
+    : 'Eliminar la categoría "' + cat + '"?';
+  if(!confirm(msg)) return;
+  delete catalog[tipo][cat];
+  await saveCatalog();
+  showToast('"' + cat + '" eliminada');
+  if(refresh) refresh(tipo);
+  renderGastosAll();
+}
+
+async function deleteSubcat(tipo, cat, sub, refresh){
+  var txCount = allData.filter(function(r){
+    return r.tipo === tipo && cleanCat(r.categoria) === cat && r.subcat === sub;
+  }).length;
+  var msg = txCount > 0
+    ? 'Eliminar "' + sub + '"? Tiene ' + txCount + ' movimiento(s) que quedarán sin subcategoría.'
+    : 'Eliminar la subcategoría "' + sub + '"?';
+  if(!confirm(msg)) return;
+  catalog[tipo][cat] = catalog[tipo][cat].filter(function(s){ return s !== sub; });
+  await saveCatalog();
+  showToast('"' + sub + '" eliminada');
+  if(refresh) refresh(tipo);
+}
 
 /* ── EXPORT ── */
 function openExportModal(){
