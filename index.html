@@ -1608,7 +1608,11 @@ function monthKey(date){ return `${date.getFullYear()}-${date.getMonth()+1}`; }
 function monthLabel(key){ const[y,m]=key.split('-'); return `${MONTH_ES[+m-1].slice(0,3)} ${y}`; }
 function getMonthKeys(){
   const keys=[...new Set(allData.map(r=>monthKey(r.date)))];
-  return keys.sort();
+  return keys.sort(function(a,b){
+    const [ay,am]=a.split('-').map(Number);
+    const [by,bm]=b.split('-').map(Number);
+    return ay!==by ? ay-by : am-bm;
+  });
 }
 
 /* ── Active dataset based on filter ── */
