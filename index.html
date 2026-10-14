@@ -1112,18 +1112,21 @@ async function doEmailLogin(){
   var password = document.getElementById('loginPassword').value;
   showLoginError('');
   if(!email||!password){ showLoginError('Ingresa correo y contraseña.'); return; }
+  var btn = document.getElementById('btnEmailLogin');
+  btn.disabled=true; btn.textContent='Entrando...';
   try{
-    document.getElementById('btnEmailLogin').disabled=true;
     await auth.signInWithEmailAndPassword(email, password);
   } catch(e){
-    var msg = 'Error al iniciar sesión.';
+    console.error('Login error:', e.code, e.message);
+    var msg = 'Error: ' + (e.code || e.message || 'desconocido');
     if(e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')
       msg='Correo o contraseña incorrectos.';
     else if(e.code==='auth/invalid-email') msg='Correo inválido.';
     else if(e.code==='auth/too-many-requests') msg='Demasiados intentos. Intenta más tarde.';
+    else if(e.code==='auth/user-disabled') msg='Usuario deshabilitado.';
     showLoginError(msg);
   } finally{
-    document.getElementById('btnEmailLogin').disabled=false;
+    btn.disabled=false; btn.textContent='Iniciar sesión';
   }
 }
 
@@ -2753,7 +2756,7 @@ function renderServicios(){
       return '<div class="sv-pago-row">'
         +'<span style="color:var(--muted);">'+p.fecha+'</span>'
         +'<span style="font-weight:600;">'+fmtMXN(p.monto)+'</span>'
-        +'<button class="btn-icon del" style="font-size:.65rem;padding:.1rem .35rem;" onclick="deleteSvPago('+si+',''+p.id+'')">✕</button>'
+        +'<button class="btn-icon del" style="font-size:.65rem;padding:.1rem .35rem;" onclick="deleteSvPago('+si+','+p.id+')">✕</button>'
         +'</div>';
     }).join('');
     var addRow = '<div class="sv-add-pago">'
@@ -2838,7 +2841,7 @@ function openSvModal(si){
   overlay.id='svModal'; overlay.className='modal-overlay open';
   var ICONOS=['🏠','💧','⚡','🔥','📶','🌐','📺','🧹','🏋️','🚿'];
   var icoHtml = ICONOS.map(function(ic){
-    return '<button type="button" onclick="selectSvIco(this,''+ic+'')" style="font-size:1.3rem;background:transparent;border:2px solid transparent;border-radius:6px;padding:.15rem .3rem;cursor:pointer;transition:border-color .15s;"'
+    return '<button type="button" onclick="selectSvIco(this,this.dataset.ico)" data-ico="'+ic+'" style="font-size:1.3rem;background:transparent;border:2px solid transparent;border-radius:6px;padding:.15rem .3rem;cursor:pointer;transition:border-color .15s;"'
       +(sv&&sv.icono===ic?' class="sv-ico-sel" style="border-color:var(--accent)!important;"':'')+'>'+ic+'</button>';
   }).join('');
   overlay.innerHTML='<div class="modal" style="max-width:420px;">'
@@ -2913,7 +2916,7 @@ function renderCoche(){
       return '<div class="co-pago-row">'
         +'<span style="color:var(--muted);">'+p.fecha+(p.nota?' — <em>'+p.nota+'</em>':'')+'</span>'
         +'<span style="font-weight:600;">'+fmtMXN(p.monto)+'</span>'
-        +'<button class="btn-icon del" style="font-size:.65rem;padding:.1rem .35rem;" onclick="deleteCoItem('+ci+',''+p.id+'')">✕</button>'
+        +'<button class="btn-icon del" style="font-size:.65rem;padding:.1rem .35rem;" onclick="deleteCoItem('+ci+','+p.id+')">✕</button>'
         +'</div>';
     }).join('');
     var total = pagos.reduce(function(s,p){ return s+p.monto; },0);
@@ -2989,7 +2992,7 @@ function openCoModal(ci){
   var co = ci!==null ? coData[ci] : null;
   var CO_ICOS=['🚗','🔧','⛽','🅿️','📋','🛡️','💨','⚙️','🪛','🔩'];
   var icoHtml = CO_ICOS.map(function(ic){
-    return '<button type="button" onclick="selectCoIco(this,''+ic+'')" style="font-size:1.3rem;background:transparent;border:2px solid transparent;border-radius:6px;padding:.15rem .3rem;cursor:pointer;transition:border-color .15s;"'
+    return '<button type="button" onclick="selectCoIco(this,this.dataset.ico)" data-ico="'+ic+'" style="font-size:1.3rem;background:transparent;border:2px solid transparent;border-radius:6px;padding:.15rem .3rem;cursor:pointer;transition:border-color .15s;"'
       +(co&&co.icono===ic?' style="border-color:var(--accent)!important;"':'')+'>'+ic+'</button>';
   }).join('');
   var catOpts = CO_CATS.map(function(cat){
@@ -3076,8 +3079,8 @@ function renderSatAdi(){
       +'<div class="sat-card-header">'
       +'<div class="sat-card-name" style="color:var(--accent);">📅 Año '+d.año+(d.periodo?' — '+d.periodo:'')+'</div>'
       +'<div style="display:flex;gap:.4rem;">'
-      +'<button class="btn-icon edit" onclick="editSatModal('adi',''+d.id+'')">✏️</button>'
-      +'<button class="btn-icon del" onclick="deleteSatDec('adi',''+d.id+'')">🗑</button>'
+      +'<button class="btn-icon edit" onclick="editSatModal('adi',this.dataset.id)" data-id="'+d.id+'">✏️</button>'
+      +'<button class="btn-icon del" onclick="deleteSatDec('adi',this.dataset.id)" data-id="'+d.id+'">🗑</button>'
       +'</div></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;font-size:.78rem;margin-bottom:.5rem;">'
       +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">INGRESOS</div><div style="font-weight:700;">'+fmtMXN(d.ingresos||0)+'</div></div>'
@@ -3107,8 +3110,8 @@ function renderSatThreadfin(){
       +'<div class="sat-card-header">'
       +'<div class="sat-card-name" style="color:var(--accent4);">🗓 '+d.mes+' '+d.año+'</div>'
       +'<div style="display:flex;gap:.4rem;">'
-      +'<button class="btn-icon edit" onclick="editSatModal('threadfin',''+d.id+'')">✏️</button>'
-      +'<button class="btn-icon del" onclick="deleteSatDec('threadfin',''+d.id+'')">🗑</button>'
+      +'<button class="btn-icon edit" onclick="editSatModal('threadfin',this.dataset.id)" data-id="'+d.id+'">✏️</button>'
+      +'<button class="btn-icon del" onclick="deleteSatDec('threadfin',this.dataset.id)" data-id="'+d.id+'">🗑</button>'
       +'</div></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;font-size:.78rem;">'
       +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">INGRESOS</div><div style="font-weight:700;">'+fmtMXN(d.ingresos||0)+'</div></div>'
@@ -3157,7 +3160,7 @@ function openSatModal(tipo, d){
     +'</div>'
     +'<div class="modal-actions">'
     +'<button class="btn-secondary" onclick="document.getElementById('satModal').remove()">Cancelar</button>'
-    +'<button class="btn-primary" onclick="saveSatModal(''+tipo+'',''+(d?d.id:'')+'')">Guardar</button>'
+    +'<button class="btn-primary" onclick="saveSatModal(this.dataset.tipo,this.dataset.eid)" data-tipo="'+tipo+'" data-eid="'+(d?d.id:'')+'">Guardar</button>'
     +'</div></div>';
   overlay.addEventListener('click',function(e){ if(e.target===overlay) overlay.remove(); });
   document.body.appendChild(overlay);
