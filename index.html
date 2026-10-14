@@ -619,6 +619,52 @@ td input::placeholder{color:var(--border);}
   width:22px;height:22px;border:2px solid var(--border);
   border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
+
+/* ══ SERVICIOS / COCHE / SAT SHARED ══ */
+.sv-card,.co-card,.sat-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:1rem 1.1rem;
+}
+.sv-card-header,.co-card-header,.sat-card-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;
+}
+.sv-card-name,.co-card-name,.sat-card-name{
+  font-size:.92rem;font-weight:700;display:flex;align-items:center;gap:.5rem;
+}
+.sv-pago-row,.co-pago-row{
+  display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:center;
+  padding:.35rem 0;border-bottom:1px solid var(--border)30;font-size:.8rem;
+}
+.sv-pago-row:last-child,.co-pago-row:last-child{border-bottom:none;}
+.sv-add-pago{
+  display:flex;gap:.5rem;margin-top:.7rem;
+}
+.sv-add-pago input,.co-add-pago input,.sat-field input,.sat-field select{
+  flex:1;background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;padding:.35rem .6rem;color:var(--text);
+  font-family:'Roboto',sans-serif;font-size:.78rem;outline:none;
+  transition:border-color .2s;
+}
+.sv-add-pago input:focus,.co-add-pago input:focus,.sat-field input:focus,.sat-field select:focus{border-color:var(--accent);}
+.sv-add-pago button,.co-add-pago button{
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:.35rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;
+  color:var(--accent);font-family:'Roboto',sans-serif;transition:all .15s;
+}
+.sv-add-pago button:hover,.co-add-pago button:hover{border-color:var(--accent);background:rgba(245,158,11,.08);}
+.co-add-pago{display:flex;gap:.5rem;margin-top:.7rem;}
+.sat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.8rem;}
+.sat-field{display:flex;flex-direction:column;gap:.3rem;}
+.sat-field label{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;}
+.sat-badge{display:inline-block;padding:.2rem .6rem;border-radius:6px;font-size:.7rem;font-weight:700;}
+.sat-badge.pagado{background:rgba(16,185,129,.15);color:var(--income);}
+.sat-badge.pendiente{background:rgba(245,158,11,.15);color:var(--accent);}
+.sat-badge.saldo-favor{background:rgba(6,182,212,.15);color:var(--accent2);}
+@media(max-width:768px){
+  #page-servicios .container > div,
+  #page-coche .container > div,
+  #page-sat .container > div{grid-template-columns:1fr!important;}
+}
 </style>
 </head>
 <body>
@@ -646,6 +692,9 @@ td input::placeholder{color:var(--border);}
     <div class="tabs">
       <button class="tab active" onclick="switchTab('ahorros',this)">💰 Ahorros</button>
       <button class="tab" onclick="switchTab('gastos',this)">📊 Ingresos & Gastos</button>
+      <button class="tab" onclick="switchTab('servicios',this)">🏠 Servicios</button>
+      <button class="tab" onclick="switchTab('coche',this)">🚗 Coche</button>
+      <button class="tab" onclick="switchTab('sat',this)">🧾 SAT</button>
     </div>
   </div>
   <div class="topbar-right">
@@ -662,6 +711,19 @@ td input::placeholder{color:var(--border);}
       <input type="file" id="fileInput" accept=".xlsx,.xls">
       <button class="upload-btn" onclick="openExportModal()" style="background:transparent;border:1px solid var(--accent3);color:var(--accent3);">↓ Exportar</button>
       <button class="upload-btn" onclick="openCatManager()" style="background:transparent;border:1px solid var(--accent);color:var(--accent);">⚙ Categorías</button>
+    </div>
+    <!-- Servicios controls -->
+    <div id="svCtrl" style="display:none;align-items:center;gap:.7rem;">
+      <button class="upload-btn" onclick="openAddSvModal()" style="background:transparent;border:1px solid var(--accent3);color:var(--accent3);">＋ Agregar servicio</button>
+    </div>
+    <!-- Coche controls -->
+    <div id="coCtrl" style="display:none;align-items:center;gap:.7rem;">
+      <button class="upload-btn" onclick="openAddCoModal()" style="background:transparent;border:1px solid var(--accent2);color:var(--accent2);">＋ Agregar gasto</button>
+    </div>
+    <!-- SAT controls -->
+    <div id="satCtrl" style="display:none;align-items:center;gap:.7rem;">
+      <button class="upload-btn" onclick="openAddSatModal('adi')" style="background:transparent;border:1px solid var(--accent);color:var(--accent);">＋ Dec ADI</button>
+      <button class="upload-btn" onclick="openAddSatModal('threadfin')" style="background:transparent;border:1px solid var(--accent4);color:var(--accent4);">＋ Dec Threadfin</button>
     </div>
     <!-- User -->
     <div id="userChip" style="display:none;">
@@ -893,6 +955,90 @@ td input::placeholder{color:var(--border);}
 </div>
 
 <!-- ══════════════════════════════
+     PAGE: SERVICIOS
+══════════════════════════════ -->
+<div class="page" id="page-servicios">
+<div class="container">
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:1.5rem;align-items:start;">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Servicios del Hogar</div>
+      </div>
+      <div id="svList" style="display:flex;flex-direction:column;gap:1rem;"></div>
+      <p id="svEmpty" style="color:var(--muted);font-size:.85rem;display:none;">Sin servicios registrados. Agrega uno con el botón de arriba.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="panel">
+        <div class="panel-title">Resumen Mensual</div>
+        <div id="svSummary" style="display:flex;flex-direction:column;gap:.6rem;"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Historial de Pagos</div>
+        <div id="svHistory" style="display:flex;flex-direction:column;gap:.4rem;max-height:320px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════
+     PAGE: COCHE
+══════════════════════════════ -->
+<div class="page" id="page-coche">
+<div class="container">
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:1.5rem;align-items:start;">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Gastos del Coche</div>
+      </div>
+      <div id="coList" style="display:flex;flex-direction:column;gap:1rem;"></div>
+      <p id="coEmpty" style="color:var(--muted);font-size:.85rem;display:none;">Sin gastos registrados.</p>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Totales por Categoría</div>
+      <div id="coSummary" style="display:flex;flex-direction:column;gap:.7rem;"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════
+     PAGE: SAT
+══════════════════════════════ -->
+<div class="page" id="page-sat">
+<div class="container">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+
+    <!-- ADI -->
+    <div class="panel">
+      <div class="panel-header" style="margin-bottom:1rem;">
+        <div class="panel-title" style="margin-bottom:0;">ADI (Anual)</div>
+        <span style="font-size:.72rem;color:var(--muted);">Declaración anual</span>
+      </div>
+      <div id="satAdiList" style="display:flex;flex-direction:column;gap:.7rem;"></div>
+      <p id="satAdiEmpty" style="color:var(--muted);font-size:.85rem;display:none;">Sin declaraciones registradas.</p>
+    </div>
+
+    <!-- Threadfin -->
+    <div class="panel">
+      <div class="panel-header" style="margin-bottom:1rem;">
+        <div class="panel-title" style="margin-bottom:0;">Threadfin (Mensual)</div>
+        <span style="font-size:.72rem;color:var(--muted);">Declaraciones mensuales</span>
+      </div>
+      <div id="satTfList" style="display:flex;flex-direction:column;gap:.7rem;"></div>
+      <p id="satTfEmpty" style="color:var(--muted);font-size:.85rem;display:none;">Sin declaraciones registradas.</p>
+      <!-- Totales Threadfin -->
+      <div id="satTfTotals" style="margin-top:1.2rem;display:none;">
+        <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-bottom:.6rem;">Acumulado del año</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;" id="satTfTotalsGrid"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════
      SCRIPTS
 ══════════════════════════════ -->
 
@@ -1022,6 +1168,10 @@ async function initAppData(){
   } finally{ setSyncing(false); }
   renderAhorrosAll();
   buildMonthFilter();
+  // Init additional modules
+  initServicios();
+  initCoche();
+  initSat();
 }
 
 // ─── Save functions (Firestore) ───
@@ -1082,9 +1232,15 @@ function switchTab(name, btn) {
   btn.classList.add('active');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  document.getElementById('ahCtrl').style.display = name === 'ahorros' ? 'flex' : 'none';
-  document.getElementById('gaCtrl').style.display  = name === 'gastos'  ? 'flex' : 'none';
-  if (name === 'gastos') { buildMonthFilter(); renderGastosAll(); }
+  document.getElementById('ahCtrl').style.display  = name === 'ahorros'   ? 'flex' : 'none';
+  document.getElementById('gaCtrl').style.display   = name === 'gastos'    ? 'flex' : 'none';
+  document.getElementById('svCtrl').style.display   = name === 'servicios' ? 'flex' : 'none';
+  document.getElementById('coCtrl').style.display   = name === 'coche'     ? 'flex' : 'none';
+  document.getElementById('satCtrl').style.display  = name === 'sat'       ? 'flex' : 'none';
+  if (name === 'gastos')    { buildMonthFilter(); renderGastosAll(); }
+  if (name === 'servicios') { renderServicios(); }
+  if (name === 'coche')     { renderCoche(); }
+  if (name === 'sat')       { renderSat(); }
 }
 
 /* ══════════════════════════════
@@ -2534,6 +2690,491 @@ async function confirmDeleteMonth(key){
   if(currentMonthKey === key) currentMonthKey = 'all';
   await saveGastos(); buildMonthFilter(); renderGastosAll();
   showToast(monthLabel(key) + ' eliminado', 'success');
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   SERVICIOS MODULE
+══════════════════════════════════════════════════════════ */
+var svData = []; // [{id, nombre, icono, color, pagos:[{id,fecha,monto,nota}]}]
+
+async function loadServicios(){
+  if(!currentUser) return;
+  var raw = await fsGet('servicios','data');
+  svData = (raw && Array.isArray(raw.services)) ? raw.services : [];
+}
+async function saveServicios(){
+  if(!currentUser) return;
+  await fsSet('servicios','data',{services:svData});
+}
+async function initServicios(){
+  await loadServicios();
+  renderServicios();
+}
+
+function renderServicios(){
+  var list = document.getElementById('svList');
+  var empty = document.getElementById('svEmpty');
+  if(!list) return;
+  list.innerHTML = '';
+  if(!svData.length){ empty.style.display='block'; list.style.display='none'; renderSvSummary(); return; }
+  empty.style.display='none'; list.style.display='flex';
+  svData.forEach(function(sv,si){
+    var card = document.createElement('div'); card.className='sv-card';
+    var hdr = '<div class="sv-card-header">'
+      +'<div class="sv-card-name"><span style="font-size:1.2rem;">'+sv.icono+'</span>'
+      +'<span style="color:'+(sv.color||'var(--accent)')+'">'+sv.nombre+'</span></div>'
+      +'<div style="display:flex;gap:.4rem;">'
+      +'<button class="btn-icon edit" onclick="editSvModal('+si+')" title="Editar">✏️</button>'
+      +'<button class="btn-icon del" onclick="deleteSv('+si+')" title="Eliminar">🗑</button>'
+      +'</div></div>';
+    var pagos = (sv.pagos||[]).slice().sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
+    var rows = pagos.map(function(p,pi){
+      return '<div class="sv-pago-row">'
+        +'<span style="color:var(--muted);">'+p.fecha+'</span>'
+        +'<span style="font-weight:600;">'+fmtMXN(p.monto)+'</span>'
+        +'<button class="btn-icon del" style="font-size:.65rem;padding:.1rem .35rem;" onclick="deleteSvPago('+si+',''+p.id+'')">✕</button>'
+        +'</div>';
+    }).join('');
+    var addRow = '<div class="sv-add-pago">'
+      +'<input type="date" id="svDate_'+si+'" value="'+new Date().toISOString().slice(0,10)+'">'
+      +'<input type="number" id="svMonto_'+si+'" placeholder="Monto" min="0" step="0.01" style="max-width:120px;">'
+      +'<button onclick="addSvPago('+si+')">+ Pago</button>'
+      +'</div>';
+    card.innerHTML = hdr
+      +'<div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem;">'+pagos.length+' pago(s) registrado(s)</div>'
+      +(rows?'<div>'+rows+'</div>':'')
+      +addRow;
+    list.appendChild(card);
+  });
+  renderSvSummary();
+  renderSvHistory();
+}
+
+function renderSvSummary(){
+  var c = document.getElementById('svSummary'); if(!c) return;
+  c.innerHTML='';
+  if(!svData.length){ c.innerHTML='<p style="color:var(--muted);font-size:.8rem;">Sin servicios</p>'; return; }
+  var now = new Date(); var ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var total=0;
+  svData.forEach(function(sv){
+    var mes = (sv.pagos||[]).filter(function(p){ return p.fecha.startsWith(ym); });
+    var sub = mes.reduce(function(s,p){ return s+p.monto; },0);
+    total+=sub;
+    var color = sv.color||'var(--accent)';
+    c.innerHTML+='<div style="display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--border)30;">'
+      +'<div style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;"><span>'+sv.icono+'</span><span>'+sv.nombre+'</span></div>'
+      +'<span style="font-weight:700;color:'+color+';">'+fmtMXN(sub)+'</span></div>';
+  });
+  c.innerHTML+='<div style="display:flex;justify-content:space-between;padding:.5rem 0;font-weight:700;font-size:.88rem;">'
+    +'<span>Total del mes</span><span style="color:var(--accent);">'+fmtMXN(total)+'</span></div>';
+}
+
+function renderSvHistory(){
+  var c = document.getElementById('svHistory'); if(!c) return;
+  c.innerHTML='';
+  var all=[];
+  svData.forEach(function(sv){
+    (sv.pagos||[]).forEach(function(p){ all.push({nombre:sv.nombre,icono:sv.icono,color:sv.color,fecha:p.fecha,monto:p.monto}); });
+  });
+  all.sort(function(a,b){ return b.fecha.localeCompare(a.fecha); }).slice(0,30).forEach(function(p){
+    c.innerHTML+='<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--border)20;font-size:.78rem;">'
+      +'<div style="display:flex;align-items:center;gap:.4rem;color:var(--muted);">'
+      +'<span>'+p.icono+'</span><span>'+p.nombre+'</span>'
+      +'<span style="font-size:.7rem;">'+p.fecha+'</span></div>'
+      +'<span style="font-weight:600;color:'+(p.color||'var(--text)')+';">'+fmtMXN(p.monto)+'</span></div>';
+  });
+  if(!all.length) c.innerHTML='<p style="color:var(--muted);font-size:.8rem;">Sin pagos</p>';
+}
+
+async function addSvPago(si){
+  var fecha = document.getElementById('svDate_'+si).value;
+  var monto = parseFloat(document.getElementById('svMonto_'+si).value);
+  if(!fecha||isNaN(monto)||monto<=0){ showToast('Fecha y monto requeridos','warn'); return; }
+  if(!svData[si].pagos) svData[si].pagos=[];
+  svData[si].pagos.push({id:crypto.randomUUID(),fecha:fecha,monto:monto});
+  await saveServicios(); renderServicios(); showToast('Pago registrado');
+}
+
+async function deleteSvPago(si, pid){
+  if(!confirm('¿Eliminar este pago?')) return;
+  svData[si].pagos = (svData[si].pagos||[]).filter(function(p){ return p.id!==pid; });
+  await saveServicios(); renderServicios(); showToast('Pago eliminado');
+}
+
+async function deleteSv(si){
+  if(!confirm('¿Eliminar el servicio "'+svData[si].nombre+'" y todos sus pagos?')) return;
+  svData.splice(si,1);
+  await saveServicios(); renderServicios(); showToast('Servicio eliminado');
+}
+
+function openAddSvModal(){ openSvModal(null); }
+function editSvModal(si){ openSvModal(si); }
+
+function openSvModal(si){
+  var existing = document.getElementById('svModal'); if(existing) existing.remove();
+  var sv = si!==null ? svData[si] : null;
+  var overlay = document.createElement('div');
+  overlay.id='svModal'; overlay.className='modal-overlay open';
+  var ICONOS=['🏠','💧','⚡','🔥','📶','🌐','📺','🧹','🏋️','🚿'];
+  var icoHtml = ICONOS.map(function(ic){
+    return '<button type="button" onclick="selectSvIco(this,''+ic+'')" style="font-size:1.3rem;background:transparent;border:2px solid transparent;border-radius:6px;padding:.15rem .3rem;cursor:pointer;transition:border-color .15s;"'
+      +(sv&&sv.icono===ic?' class="sv-ico-sel" style="border-color:var(--accent)!important;"':'')+'>'+ic+'</button>';
+  }).join('');
+  overlay.innerHTML='<div class="modal" style="max-width:420px;">'
+    +'<button class="modal-close" onclick="document.getElementById('svModal').remove()">✕</button>'
+    +'<div class="modal-title">'+(sv?'Editar Servicio':'Nuevo Servicio')+'</div>'
+    +'<div class="field" style="margin-bottom:.8rem;"><label>Nombre</label>'
+    +'<input type="text" id="svNombre" value="'+(sv?sv.nombre:'')+'" placeholder="Ej: Agua, Luz..."></div>'
+    +'<div class="field" style="margin-bottom:.8rem;"><label>Ícono</label>'
+    +'<div id="svIcoWrap" style="display:flex;flex-wrap:wrap;gap:.3rem;">'+icoHtml+'</div>'
+    +'<input type="hidden" id="svIcoVal" value="'+(sv?sv.icono:'🏠')+'"></div>'
+    +'<div class="field" style="margin-bottom:1rem;"><label>Color del acento</label>'
+    +'<input type="color" id="svColor" value="'+(sv?sv.color:'#f59e0b')+'" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:transparent;"></div>'
+    +'<div class="modal-actions">'
+    +'<button class="btn-secondary" onclick="document.getElementById('svModal').remove()">Cancelar</button>'
+    +'<button class="btn-primary" onclick="saveSvModal('+(si!==null?si:'null')+')">Guardar</button>'
+    +'</div></div>';
+  overlay.addEventListener('click',function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function selectSvIco(el, ico){
+  document.querySelectorAll('#svIcoWrap button').forEach(function(b){ b.style.borderColor='transparent'; });
+  el.style.borderColor='var(--accent)';
+  document.getElementById('svIcoVal').value=ico;
+}
+
+async function saveSvModal(si){
+  var nombre = document.getElementById('svNombre').value.trim();
+  var icono  = document.getElementById('svIcoVal').value||'🏠';
+  var color  = document.getElementById('svColor').value||'#f59e0b';
+  if(!nombre){ showToast('Escribe el nombre del servicio','warn'); return; }
+  if(si!==null && si!==undefined){
+    svData[si].nombre=nombre; svData[si].icono=icono; svData[si].color=color;
+  } else {
+    svData.push({id:crypto.randomUUID(),nombre:nombre,icono:icono,color:color,pagos:[]});
+  }
+  document.getElementById('svModal').remove();
+  await saveServicios(); renderServicios(); showToast(si!==null?'Servicio actualizado':'Servicio agregado');
+}
+
+/* ══════════════════════════════════════════════════════════
+   COCHE MODULE
+══════════════════════════════════════════════════════════ */
+var coData = []; // [{id, nombre, categoria, icono, pagos:[{id,fecha,monto,nota}]}]
+var CO_CATS = ['Mantenimiento','Gasolina','Seguro','Tenencia','Refrendo','Verificación','Estacionamiento','Multa','Otro'];
+
+async function loadCoche(){
+  if(!currentUser) return;
+  var raw = await fsGet('coche','data');
+  coData = (raw && Array.isArray(raw.items)) ? raw.items : [];
+}
+async function saveCoche(){
+  if(!currentUser) return;
+  await fsSet('coche','data',{items:coData});
+}
+async function initCoche(){
+  await loadCoche();
+  renderCoche();
+}
+
+function renderCoche(){
+  var list = document.getElementById('coList');
+  var empty = document.getElementById('coEmpty');
+  if(!list) return;
+  list.innerHTML='';
+  if(!coData.length){ empty.style.display='block'; list.style.display='none'; renderCoSummary(); return; }
+  empty.style.display='none'; list.style.display='flex';
+  coData.forEach(function(co,ci){
+    var card = document.createElement('div'); card.className='co-card';
+    var pagos = (co.pagos||[]).slice().sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+    var rows = pagos.map(function(p){
+      return '<div class="co-pago-row">'
+        +'<span style="color:var(--muted);">'+p.fecha+(p.nota?' — <em>'+p.nota+'</em>':'')+'</span>'
+        +'<span style="font-weight:600;">'+fmtMXN(p.monto)+'</span>'
+        +'<button class="btn-icon del" style="font-size:.65rem;padding:.1rem .35rem;" onclick="deleteCoItem('+ci+',''+p.id+'')">✕</button>'
+        +'</div>';
+    }).join('');
+    var total = pagos.reduce(function(s,p){ return s+p.monto; },0);
+    card.innerHTML='<div class="co-card-header">'
+      +'<div class="co-card-name"><span style="font-size:1.1rem;">'+co.icono+'</span>'
+      +'<div><div style="color:var(--accent2);">'+co.nombre+'</div>'
+      +'<div style="font-size:.7rem;color:var(--muted);">'+co.categoria+'</div></div></div>'
+      +'<div style="display:flex;align-items:center;gap:.7rem;">'
+      +'<span style="font-weight:700;color:var(--accent2);">'+fmtMXN(total)+'</span>'
+      +'<div style="display:flex;gap:.3rem;">'
+      +'<button class="btn-icon edit" onclick="editCoModal('+ci+')" title="Editar">✏️</button>'
+      +'<button class="btn-icon del" onclick="deleteCo('+ci+')" title="Eliminar">🗑</button>'
+      +'</div></div></div>'
+      +(rows?'<div style="margin-bottom:.6rem;">'+rows+'</div>':'')
+      +'<div class="co-add-pago">'
+      +'<input type="date" id="coDate_'+ci+'" value="'+new Date().toISOString().slice(0,10)+'">'
+      +'<input type="text" id="coNota_'+ci+'" placeholder="Nota (opcional)" style="max-width:140px;">'
+      +'<input type="number" id="coMonto_'+ci+'" placeholder="Monto" min="0" step="0.01" style="max-width:110px;">'
+      +'<button onclick="addCoPago('+ci+')">+ Pago</button>'
+      +'</div>';
+    list.appendChild(card);
+  });
+  renderCoSummary();
+}
+
+function renderCoSummary(){
+  var c = document.getElementById('coSummary'); if(!c) return;
+  c.innerHTML='';
+  if(!coData.length){ c.innerHTML='<p style="color:var(--muted);font-size:.8rem;">Sin datos</p>'; return; }
+  var bycat={};
+  coData.forEach(function(co){
+    var cat=co.categoria||'Otro';
+    var sub=(co.pagos||[]).reduce(function(s,p){ return s+p.monto; },0);
+    bycat[cat]=(bycat[cat]||0)+sub;
+  });
+  var total=0;
+  Object.entries(bycat).sort(function(a,b){return b[1]-a[1];}).forEach(function(e){
+    total+=e[1];
+    c.innerHTML+='<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--border)30;font-size:.82rem;">'
+      +'<span>'+e[0]+'</span><span style="font-weight:700;color:var(--accent2);">'+fmtMXN(e[1])+'</span></div>';
+  });
+  c.innerHTML+='<div style="display:flex;justify-content:space-between;padding:.5rem 0;font-weight:700;font-size:.88rem;">'
+    +'<span>Total</span><span style="color:var(--accent);">'+fmtMXN(total)+'</span></div>';
+}
+
+async function addCoPago(ci){
+  var fecha = document.getElementById('coDate_'+ci).value;
+  var monto = parseFloat(document.getElementById('coMonto_'+ci).value);
+  var nota  = document.getElementById('coNota_'+ci).value.trim();
+  if(!fecha||isNaN(monto)||monto<=0){ showToast('Fecha y monto requeridos','warn'); return; }
+  if(!coData[ci].pagos) coData[ci].pagos=[];
+  coData[ci].pagos.push({id:crypto.randomUUID(),fecha:fecha,monto:monto,nota:nota});
+  await saveCoche(); renderCoche(); showToast('Pago registrado');
+}
+
+async function deleteCoItem(ci, pid){
+  if(!confirm('¿Eliminar este pago?')) return;
+  coData[ci].pagos = (coData[ci].pagos||[]).filter(function(p){ return p.id!==pid; });
+  await saveCoche(); renderCoche(); showToast('Pago eliminado');
+}
+
+async function deleteCo(ci){
+  if(!confirm('¿Eliminar "'+coData[ci].nombre+'" y todos sus pagos?')) return;
+  coData.splice(ci,1);
+  await saveCoche(); renderCoche(); showToast('Eliminado');
+}
+
+function openAddCoModal(){ openCoModal(null); }
+function editCoModal(ci){ openCoModal(ci); }
+
+function openCoModal(ci){
+  var existing=document.getElementById('coModal'); if(existing) existing.remove();
+  var co = ci!==null ? coData[ci] : null;
+  var CO_ICOS=['🚗','🔧','⛽','🅿️','📋','🛡️','💨','⚙️','🪛','🔩'];
+  var icoHtml = CO_ICOS.map(function(ic){
+    return '<button type="button" onclick="selectCoIco(this,''+ic+'')" style="font-size:1.3rem;background:transparent;border:2px solid transparent;border-radius:6px;padding:.15rem .3rem;cursor:pointer;transition:border-color .15s;"'
+      +(co&&co.icono===ic?' style="border-color:var(--accent)!important;"':'')+'>'+ic+'</button>';
+  }).join('');
+  var catOpts = CO_CATS.map(function(cat){
+    return '<option value="'+cat+'" '+(co&&co.categoria===cat?'selected':'')+'>'+cat+'</option>';
+  }).join('');
+  var overlay=document.createElement('div'); overlay.id='coModal'; overlay.className='modal-overlay open';
+  overlay.innerHTML='<div class="modal" style="max-width:420px;">'
+    +'<button class="modal-close" onclick="document.getElementById('coModal').remove()">✕</button>'
+    +'<div class="modal-title">'+(co?'Editar Gasto':'Nuevo Gasto')+'</div>'
+    +'<div class="field" style="margin-bottom:.8rem;"><label>Nombre</label>'
+    +'<input type="text" id="coNombre" value="'+(co?co.nombre:'')+'" placeholder="Ej: Cambio de aceite..."></div>'
+    +'<div class="field" style="margin-bottom:.8rem;"><label>Categoría</label>'
+    +'<select id="coCat">'+catOpts+'</select></div>'
+    +'<div class="field" style="margin-bottom:1rem;"><label>Ícono</label>'
+    +'<div id="coIcoWrap" style="display:flex;flex-wrap:wrap;gap:.3rem;">'+icoHtml+'</div>'
+    +'<input type="hidden" id="coIcoVal" value="'+(co?co.icono:'🚗')+'"></div>'
+    +'<div class="modal-actions">'
+    +'<button class="btn-secondary" onclick="document.getElementById('coModal').remove()">Cancelar</button>'
+    +'<button class="btn-primary" onclick="saveCoModal('+(ci!==null?ci:'null')+')">Guardar</button>'
+    +'</div></div>';
+  overlay.addEventListener('click',function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function selectCoIco(el, ico){
+  document.querySelectorAll('#coIcoWrap button').forEach(function(b){ b.style.borderColor='transparent'; });
+  el.style.borderColor='var(--accent)';
+  document.getElementById('coIcoVal').value=ico;
+}
+
+async function saveCoModal(ci){
+  var nombre = document.getElementById('coNombre').value.trim();
+  var cat    = document.getElementById('coCat').value;
+  var icono  = document.getElementById('coIcoVal').value||'🚗';
+  if(!nombre){ showToast('Escribe el nombre','warn'); return; }
+  if(ci!==null && ci!==undefined){
+    coData[ci].nombre=nombre; coData[ci].categoria=cat; coData[ci].icono=icono;
+  } else {
+    coData.push({id:crypto.randomUUID(),nombre:nombre,categoria:cat,icono:icono,pagos:[]});
+  }
+  document.getElementById('coModal').remove();
+  await saveCoche(); renderCoche(); showToast(ci!==null?'Actualizado':'Gasto agregado');
+}
+
+/* ══════════════════════════════════════════════════════════
+   SAT MODULE
+══════════════════════════════════════════════════════════ */
+// satData = { adi: {decs:[{id,año,periodo,ingresos,isr,pagado,acuse}]},
+//             threadfin: {decs:[{id,año,mes,ingresos,isr,pagado,acuse}]} }
+var satData = { adi:{decs:[]}, threadfin:{decs:[]} };
+var SAT_MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+async function loadSat(){
+  if(!currentUser) return;
+  var raw = await fsGet('sat_'+currentUser.uid,'data');
+  if(raw && raw.adi)       satData.adi      = raw.adi;
+  if(raw && raw.threadfin) satData.threadfin= raw.threadfin;
+}
+async function saveSat(){
+  if(!currentUser) return;
+  await fsSet('sat_'+currentUser.uid,'data', satData);
+}
+async function initSat(){
+  await loadSat();
+  renderSat();
+}
+
+function renderSat(){
+  renderSatAdi();
+  renderSatThreadfin();
+}
+
+function renderSatAdi(){
+  var c = document.getElementById('satAdiList');
+  var empty = document.getElementById('satAdiEmpty');
+  if(!c) return;
+  c.innerHTML='';
+  var decs = (satData.adi.decs||[]).slice().sort(function(a,b){ return b.año-a.año; });
+  if(!decs.length){ empty.style.display='block'; return; }
+  empty.style.display='none';
+  decs.forEach(function(d){
+    var badge = d.pagado==='Pagado'?'pagado':d.pagado==='Saldo a favor'?'saldo-favor':'pendiente';
+    c.innerHTML+='<div class="sat-card">'
+      +'<div class="sat-card-header">'
+      +'<div class="sat-card-name" style="color:var(--accent);">📅 Año '+d.año+(d.periodo?' — '+d.periodo:'')+'</div>'
+      +'<div style="display:flex;gap:.4rem;">'
+      +'<button class="btn-icon edit" onclick="editSatModal('adi',''+d.id+'')">✏️</button>'
+      +'<button class="btn-icon del" onclick="deleteSatDec('adi',''+d.id+'')">🗑</button>'
+      +'</div></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;font-size:.78rem;margin-bottom:.5rem;">'
+      +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">INGRESOS</div><div style="font-weight:700;">'+fmtMXN(d.ingresos||0)+'</div></div>'
+      +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">ISR</div><div style="font-weight:700;color:var(--expense);">'+fmtMXN(d.isr||0)+'</div></div>'
+      +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">ESTADO</div><span class="sat-badge '+badge+'">'+d.pagado+'</span></div>'
+      +'</div>'
+      +(d.acuse?'<div style="font-size:.72rem;color:var(--muted);">Acuse: '+d.acuse+'</div>':'')
+      +'</div>';
+  });
+}
+
+function renderSatThreadfin(){
+  var c = document.getElementById('satTfList');
+  var empty = document.getElementById('satTfEmpty');
+  var totWrap = document.getElementById('satTfTotals');
+  if(!c) return;
+  c.innerHTML='';
+  var decs = (satData.threadfin.decs||[]).slice().sort(function(a,b){
+    if(b.año!==a.año) return b.año-a.año;
+    return SAT_MESES.indexOf(b.mes)-SAT_MESES.indexOf(a.mes);
+  });
+  if(!decs.length){ empty.style.display='block'; totWrap.style.display='none'; return; }
+  empty.style.display='none';
+  decs.forEach(function(d){
+    var badge = d.pagado==='Pagado'?'pagado':d.pagado==='Saldo a favor'?'saldo-favor':'pendiente';
+    c.innerHTML+='<div class="sat-card">'
+      +'<div class="sat-card-header">'
+      +'<div class="sat-card-name" style="color:var(--accent4);">🗓 '+d.mes+' '+d.año+'</div>'
+      +'<div style="display:flex;gap:.4rem;">'
+      +'<button class="btn-icon edit" onclick="editSatModal('threadfin',''+d.id+'')">✏️</button>'
+      +'<button class="btn-icon del" onclick="deleteSatDec('threadfin',''+d.id+'')">🗑</button>'
+      +'</div></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;font-size:.78rem;">'
+      +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">INGRESOS</div><div style="font-weight:700;">'+fmtMXN(d.ingresos||0)+'</div></div>'
+      +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">ISR</div><div style="font-weight:700;color:var(--expense);">'+fmtMXN(d.isr||0)+'</div></div>'
+      +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">ESTADO</div><span class="sat-badge '+badge+'">'+d.pagado+'</span></div>'
+      +'</div>'
+      +(d.acuse?'<div style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Acuse: '+d.acuse+'</div>':'')
+      +'</div>';
+  });
+  // Totales
+  var tot_ing = decs.reduce(function(s,d){ return s+(d.ingresos||0); },0);
+  var tot_isr = decs.reduce(function(s,d){ return s+(d.isr||0); },0);
+  totWrap.style.display='block';
+  document.getElementById('satTfTotalsGrid').innerHTML=
+    '<div class="insight-box"><div class="insight-label">Ingresos acumulados</div><div class="insight-value" style="font-size:1.1rem;color:var(--accent3);">'+fmtMXN(tot_ing)+'</div></div>'
+    +'<div class="insight-box"><div class="insight-label">ISR acumulado</div><div class="insight-value" style="font-size:1.1rem;color:var(--expense);">'+fmtMXN(tot_isr)+'</div></div>';
+}
+
+function openAddSatModal(tipo){ openSatModal(tipo, null); }
+function editSatModal(tipo, id){
+  var decs = satData[tipo].decs||[];
+  var d = decs.find(function(x){ return x.id===id; });
+  if(!d) return;
+  openSatModal(tipo, d);
+}
+
+function openSatModal(tipo, d){
+  var existing=document.getElementById('satModal'); if(existing) existing.remove();
+  var isAdi = tipo==='adi';
+  var overlay=document.createElement('div'); overlay.id='satModal'; overlay.className='modal-overlay open';
+  var yearOpts=''; for(var y=2020;y<=2030;y++) yearOpts+='<option value="'+y+'" '+(d&&d.año===y?'selected':y===new Date().getFullYear()?'selected':'')+'>'+y+'</option>';
+  var mesOpts=SAT_MESES.map(function(m){ return '<option value="'+m+'" '+(d&&d.mes===m?'selected':'')+'>'+m+'</option>'; }).join('');
+  var estadoOpts=['Pagado','Pendiente','Saldo a favor'].map(function(e){ return '<option value="'+e+'" '+(d&&d.pagado===e?'selected':'')+'>'+e+'</option>'; }).join('');
+  overlay.innerHTML='<div class="modal" style="max-width:460px;">'
+    +'<button class="modal-close" onclick="document.getElementById('satModal').remove()">✕</button>'
+    +'<div class="modal-title">'+(d?'Editar':'Nueva')+' Declaración — '+(isAdi?'ADI Anual':'Threadfin Mensual')+'</div>'
+    +'<div class="sat-grid">'
+    +'<div class="sat-field"><label>Año</label><select id="satYear">'+yearOpts+'</select></div>'
+    +(isAdi
+      ? '<div class="sat-field"><label>Período</label><input type="text" id="satPeriodo" value="'+(d&&d.periodo?d.periodo:'')+'" placeholder="Ej: Anual 2026"></div>'
+      : '<div class="sat-field"><label>Mes</label><select id="satMes">'+mesOpts+'</select></div>')
+    +'<div class="sat-field"><label>Ingresos</label><input type="number" id="satIngresos" value="'+(d?d.ingresos:'')+'" placeholder="0.00" min="0" step="0.01"></div>'
+    +'<div class="sat-field"><label>ISR</label><input type="number" id="satIsr" value="'+(d?d.isr:'')+'" placeholder="0.00" min="0" step="0.01"></div>'
+    +'<div class="sat-field"><label>Estado</label><select id="satEstado">'+estadoOpts+'</select></div>'
+    +'<div class="sat-field"><label>No. Acuse</label><input type="text" id="satAcuse" value="'+(d&&d.acuse?d.acuse:'')+'" placeholder="Ej: ABC123456"></div>'
+    +'</div>'
+    +'<div class="modal-actions">'
+    +'<button class="btn-secondary" onclick="document.getElementById('satModal').remove()">Cancelar</button>'
+    +'<button class="btn-primary" onclick="saveSatModal(''+tipo+'',''+(d?d.id:'')+'')">Guardar</button>'
+    +'</div></div>';
+  overlay.addEventListener('click',function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+async function saveSatModal(tipo, editId){
+  var año      = parseInt(document.getElementById('satYear').value);
+  var ingresos = parseFloat(document.getElementById('satIngresos').value)||0;
+  var isr      = parseFloat(document.getElementById('satIsr').value)||0;
+  var pagado   = document.getElementById('satEstado').value;
+  var acuse    = document.getElementById('satAcuse').value.trim();
+  var isAdi    = tipo==='adi';
+  var periodo  = isAdi ? document.getElementById('satPeriodo').value.trim() : null;
+  var mes      = !isAdi ? document.getElementById('satMes').value : null;
+
+  if(!satData[tipo]) satData[tipo]={decs:[]};
+  if(!satData[tipo].decs) satData[tipo].decs=[];
+
+  if(editId){
+    var idx = satData[tipo].decs.findIndex(function(d){ return d.id===editId; });
+    if(idx>-1){
+      satData[tipo].decs[idx] = Object.assign(satData[tipo].decs[idx],{año,ingresos,isr,pagado,acuse,periodo,mes});
+    }
+  } else {
+    var rec = {id:crypto.randomUUID(),año,ingresos,isr,pagado,acuse};
+    if(isAdi) rec.periodo=periodo; else rec.mes=mes;
+    satData[tipo].decs.push(rec);
+  }
+  document.getElementById('satModal').remove();
+  await saveSat(); renderSat();
+  showToast(editId?'Actualizado':'Declaración guardada');
+}
+
+async function deleteSatDec(tipo, id){
+  if(!confirm('¿Eliminar esta declaración?')) return;
+  satData[tipo].decs = (satData[tipo].decs||[]).filter(function(d){ return d.id!==id; });
+  await saveSat(); renderSat(); showToast('Declaración eliminada');
 }
 
 
