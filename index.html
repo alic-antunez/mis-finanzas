@@ -231,6 +231,50 @@ td input::placeholder{color:var(--border);}
 .insight-sub{font-size:.75rem;color:var(--muted);}
 .insights-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
 
+/* ── Rendimientos module ── */
+.rend-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1.2rem;}
+.rend-kpi{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;}
+.rend-kpi-label{font-size:.63rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.25rem;}
+.rend-kpi-value{font-size:1.2rem;font-weight:800;}
+.rend-kpi-value.yellow{color:var(--accent);}
+.rend-kpi-value.green{color:var(--accent3);}
+.rend-kpi-sub{font-size:.67rem;color:var(--muted);margin-top:.12rem;}
+.rend-tbl-wrap{overflow-x:auto;}
+.rend-tbl{width:100%;border-collapse:collapse;font-size:.8rem;}
+.rend-tbl thead tr{border-bottom:2px solid var(--border);}
+.rend-tbl th{padding:.48rem .6rem;text-align:left;font-size:.63rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;white-space:nowrap;}
+.rend-tbl th.r,.rend-tbl td.r{text-align:right;}
+.rend-tbl th.c,.rend-tbl td.c{text-align:center;}
+.rend-tbl tbody tr{border-bottom:1px solid #ffffff06;transition:background .12s;}
+.rend-tbl tbody tr:hover{background:rgba(255,255,255,.025);}
+.rend-tbl td{padding:.48rem .6rem;vertical-align:middle;}
+.rend-tfoot td{border-top:1px solid var(--border);font-weight:700;color:var(--accent);padding-top:.65rem;}
+.rend-editable{cursor:pointer;border-bottom:1px dashed var(--border);transition:border-color .15s;}
+.rend-editable:hover{border-color:var(--accent);color:var(--accent);}
+.rend-cell-input{background:var(--surface2);border:1px solid var(--accent);border-radius:6px;padding:.22rem .45rem;color:var(--text);font-family:inherit;font-size:.8rem;outline:none;text-align:right;}
+.rend-bar-wrap{display:flex;align-items:center;gap:.45rem;}
+.rend-bar-bg{flex:1;height:4px;background:var(--border);border-radius:3px;min-width:35px;}
+.rend-bar-fill{height:100%;border-radius:3px;}
+.rend-liq{display:inline-block;padding:.15rem .45rem;border-radius:5px;font-size:.67rem;font-weight:600;}
+.rend-liq-d{background:rgba(16,185,129,.15);color:#10b981;}
+.rend-liq-w{background:rgba(6,182,212,.15);color:#06b6d4;}
+.rend-liq-m{background:rgba(245,158,11,.15);color:#f59e0b;}
+.rend-liq-l{background:rgba(139,92,246,.15);color:#a78bfa;}
+.rend-calc{color:var(--accent3);font-weight:600;}
+.btn-rend-del{background:transparent;border:1px solid transparent;border-radius:6px;padding:.25rem .45rem;cursor:pointer;color:var(--muted);font-size:.72rem;transition:all .15s;}
+.btn-rend-del:hover{border-color:var(--danger);color:var(--danger);}
+.rend-add-section{margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border);}
+.rend-add-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.65rem;font-weight:600;}
+.rend-add-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr 1fr auto;gap:.45rem;align-items:end;}
+.rend-add-grid label{display:flex;flex-direction:column;gap:.28rem;font-size:.63rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;}
+.rend-add-grid input,.rend-add-grid select{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.4rem .65rem;color:var(--text);font-family:inherit;font-size:.77rem;outline:none;transition:border-color .2s;}
+.rend-add-grid input:focus,.rend-add-grid select:focus{border-color:var(--accent);}
+.btn-rend-add{background:var(--accent);color:#0f0e0b;border:none;border-radius:7px;padding:.42rem .9rem;font-weight:700;cursor:pointer;font-size:.77rem;white-space:nowrap;align-self:end;}
+.btn-rend-add:hover{opacity:.88;}
+.rend-hint{font-size:.67rem;color:var(--muted);margin-top:.55rem;}
+@media(max-width:900px){.rend-kpi-row{grid-template-columns:1fr 1fr;}.rend-add-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.rend-kpi-row{grid-template-columns:1fr 1fr;}.rend-add-grid{grid-template-columns:1fr;}}
+
 .tag{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
 .tag-bbva{background:rgba(0,68,129,.3);color:#60a5fa;}
 .tag-nu{background:rgba(130,10,209,.3);color:#c084fc;}
@@ -806,13 +850,79 @@ td input::placeholder{color:var(--border);}
   </div>
 
   <div class="sav-bottom">
-    <div class="panel">
-      <div class="panel-title">Análisis por Fintech</div>
-      <div class="fintech-list" id="fintechDetail"></div>
-    </div>
-    <div class="panel">
-      <div class="panel-title">Métricas Clave</div>
-      <div class="insights-grid" id="insightsGrid"></div>
+    <div class="panel rend-panel" style="grid-column:1/-1;">
+      <div class="panel-title">Cálculo de Rendimientos</div>
+      <!-- KPIs -->
+      <div class="rend-kpi-row">
+        <div class="rend-kpi">
+          <div class="rend-kpi-label">Total Invertido</div>
+          <div class="rend-kpi-value yellow" id="rendKpiTotal">$0</div>
+          <div class="rend-kpi-sub">suma de saldos actuales</div>
+        </div>
+        <div class="rend-kpi">
+          <div class="rend-kpi-label">Rendimiento Diario</div>
+          <div class="rend-kpi-value green" id="rendKpiDiario">$0</div>
+          <div class="rend-kpi-sub">estimado hoy</div>
+        </div>
+        <div class="rend-kpi">
+          <div class="rend-kpi-label">Rendimiento Mensual</div>
+          <div class="rend-kpi-value green" id="rendKpiMensual">$0</div>
+          <div class="rend-kpi-sub">estimado este mes</div>
+        </div>
+        <div class="rend-kpi">
+          <div class="rend-kpi-label">Rendimiento Anual</div>
+          <div class="rend-kpi-value green" id="rendKpiAnual">$0</div>
+          <div class="rend-kpi-sub">proyección 12 meses</div>
+        </div>
+      </div>
+      <!-- Table -->
+      <div class="rend-tbl-wrap">
+        <table class="rend-tbl">
+          <thead>
+            <tr>
+              <th>Sofipo / Banco</th>
+              <th class="r">Monto Máx</th>
+              <th class="c">Rendimiento %</th>
+              <th class="c">Liquidez</th>
+              <th class="r">Actual</th>
+              <th class="r">Rend. Diario</th>
+              <th class="r">Rend. Mensual</th>
+              <th class="r">Rend. Anual</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rendTblBody"></tbody>
+          <tfoot>
+            <tr class="rend-tfoot">
+              <td colspan="4" style="color:var(--muted);font-size:.72rem;font-weight:400;">TOTAL</td>
+              <td class="r" id="rendFActual"></td>
+              <td class="r" id="rendFDiario"></td>
+              <td class="r" id="rendFMensual"></td>
+              <td class="r" id="rendFAnual"></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <!-- Add form -->
+      <div class="rend-add-section">
+        <div class="rend-add-title">+ Agregar cuenta</div>
+        <div class="rend-add-grid">
+          <label>Nombre<input id="rendInNombre" placeholder="Ej. Nu Cajita Turbo" /></label>
+          <label>Monto máx<input id="rendInMontoMax" type="number" placeholder="0 = ilimitado" /></label>
+          <label>Rend. %<input id="rendInPct" type="number" step="0.1" placeholder="Ej. 13" /></label>
+          <label>Liquidez
+            <select id="rendInLiquidez">
+              <option>Diario</option><option>Semanal</option><option>Mensual</option>
+              <option>2 meses</option><option>3 meses</option><option>6 meses</option>
+              <option>12 meses</option><option>24 meses</option>
+            </select>
+          </label>
+          <label>Saldo actual<input id="rendInActual" type="number" step="0.01" placeholder="0.00" /></label>
+          <button class="btn-rend-add" onclick="rendAddRow()">Agregar</button>
+        </div>
+        <div class="rend-hint">💡 Haz click en cualquier valor de la tabla para editarlo.</div>
+      </div>
     </div>
   </div>
 
@@ -1625,28 +1735,127 @@ function renderSavChart(){
   });
 }
 
-function renderFintechDetail(){
-  const filled=getFilledRows(); const container=document.getElementById('fintechDetail'); container.innerHTML='';
-  if(filled.length<2){container.innerHTML='<p style="color:var(--muted);font-size:.8rem">Necesitas al menos 2 meses de datos</p>';return;}
-  const latest=filled[filled.length-1], prev=filled[filled.length-2], first=filled[0];
-  FINTECHS.forEach(f=>{
-    if(latest[f]===null) return;
-    const color=FT_COLORS[f]||'#94a3b8';
-    const mom=calcGrowth(latest[f],prev[f]), ytd=calcGrowth(latest[f],first[f]), diff=latest[f]-(prev[f]||0);
-    const item=document.createElement('div'); item.className='fintech-item';
-    item.style.cssText='padding:.8rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:.5rem';
-    item.innerHTML=`
-      <div class="fintech-header" style="margin-bottom:.6rem">
-        <div class="fintech-name"><div class="fintech-dot" style="background:${color}"></div>${ftTag(f)}</div>
-        <span style="font-weight:700;font-size:.95rem">${fmtMXN(latest[f])}</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;font-size:.72rem">
-        <div><div style="color:var(--muted);margin-bottom:.2rem">Mes a Mes</div><div style="font-weight:600;color:${mom!==null&&mom>=0?'var(--accent3)':'var(--danger)'}">${fmtPct(mom)}</div></div>
-        <div><div style="color:var(--muted);margin-bottom:.2rem">Acumulado</div><div style="font-weight:600;color:${ytd!==null&&ytd>=0?'var(--accent3)':'var(--danger)'}">${fmtPct(ytd)}</div></div>
-        <div><div style="color:var(--muted);margin-bottom:.2rem">Δ vs ant.</div><div style="font-weight:600;color:${diff>=0?'var(--accent3)':'var(--danger)'}">${diff>=0?'+':''}${fmtMXN(diff).replace('$','')}</div></div>
-      </div>`;
-    container.appendChild(item);
+/* ══ RENDIMIENTOS MODULE ══ */
+let rendRows = [];
+let rendNextId = 100;
+
+function rendColorFor(n){
+  const REND_COLORS={'Nu':'#c084fc','Didi':'#fb923c','Mifel':'#93c5fd','MasOrden':'#34d399','Wise':'#4ade80','OpenBank':'#f87171','Plata':'#fb923c','BBVA':'#60a5fa'};
+  for(const k in REND_COLORS) if(n.toLowerCase().includes(k.toLowerCase())) return REND_COLORS[k];
+  let h=0; for(let i=0;i<n.length;i++) h=(h*31+n.charCodeAt(i))>>>0;
+  return '#'+((h&0xffffff)|0x404040).toString(16).padStart(6,'0');
+}
+
+function rendLiqBadge(l){
+  let cls='rend-liq-m';
+  if(l==='Diario') cls='rend-liq-d';
+  else if(l==='Semanal') cls='rend-liq-w';
+  else if(['12 meses','24 meses'].includes(l)) cls='rend-liq-l';
+  return `<span class="rend-liq ${cls}">${l}</span>`;
+}
+function rendPctClass(p){ return p>=12?'style="color:#10b981;font-weight:700"':p>=7?'style="color:#f59e0b;font-weight:700"':'style="color:#64748b;font-weight:700"'; }
+function rendFmt(n){ return '$'+n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function rendFmtMax(n){ return n===0?'Ilimitado':'$'+n.toLocaleString('es-MX'); }
+const rendRD=r=>r.actual*(r.pct/100)/365;
+const rendRM=r=>r.actual*(r.pct/100)/12;
+const rendRA=r=>r.actual*(r.pct/100);
+
+function rendStartEdit(id,field,el,isNum){
+  const r=rendRows.find(x=>x.id===id); if(!r) return;
+  const inp=document.createElement('input');
+  inp.className='rend-cell-input'; inp.type=isNum?'number':'text';
+  if(isNum) inp.step='0.01'; inp.value=r[field];
+  inp.style.width=isNum?'88px':'130px';
+  el.replaceWith(inp); inp.focus(); inp.select();
+  const save=()=>{ r[field]=isNum?(parseFloat(inp.value)||0):inp.value.trim()||r[field]; renderFintechDetail(); };
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter') save(); if(e.key==='Escape') renderFintechDetail(); });
+}
+
+function rendStartLiqEdit(id,el){
+  const r=rendRows.find(x=>x.id===id); if(!r) return;
+  const sel=document.createElement('select'); sel.className='rend-cell-input'; sel.style.width='105px';
+  ['Diario','Semanal','Mensual','2 meses','3 meses','6 meses','12 meses','24 meses'].forEach(o=>{
+    const op=document.createElement('option'); op.value=o; op.textContent=o; if(o===r.liquidez) op.selected=true; sel.appendChild(op);
   });
+  el.replaceWith(sel); sel.focus();
+  const save=()=>{ r.liquidez=sel.value; renderFintechDetail(); };
+  sel.addEventListener('change',save); sel.addEventListener('blur',save);
+}
+
+function rendDelRow(id){ if(confirm('¿Eliminar esta cuenta?')){ rendRows=rendRows.filter(r=>r.id!==id); renderFintechDetail(); } }
+
+function rendAddRow(){
+  const nombre=document.getElementById('rendInNombre').value.trim();
+  if(!nombre){ document.getElementById('rendInNombre').focus(); return; }
+  rendRows.push({
+    id:rendNextId++, nombre,
+    montoMax:parseFloat(document.getElementById('rendInMontoMax').value)||0,
+    pct:     parseFloat(document.getElementById('rendInPct').value)||0,
+    liquidez:document.getElementById('rendInLiquidez').value,
+    actual:  parseFloat(document.getElementById('rendInActual').value)||0,
+  });
+  ['rendInNombre','rendInMontoMax','rendInPct','rendInActual'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  renderFintechDetail();
+}
+
+function renderFintechDetail(){
+  const tbody=document.getElementById('rendTblBody'); if(!tbody) return;
+  const maxA=rendRows.reduce((s,r)=>s+r.actual,0)||1;
+  tbody.innerHTML=rendRows.map(r=>{
+    const color=rendColorFor(r.nombre);
+    const barW=r.actual>0?Math.round(r.actual/maxA*100):0;
+    const rd=rendRD(r), rm=rendRM(r), ra=rendRA(r);
+    return `<tr>
+      <td><span class="rend-editable" onclick="rendStartEdit(${r.id},'nombre',this,false)"
+        style="display:inline-flex;align-items:center;gap:.4rem;font-weight:600;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>${r.nombre}</span></td>
+      <td class="r"><span class="rend-editable" onclick="rendStartEdit(${r.id},'montoMax',this,true)">${rendFmtMax(r.montoMax)}</span></td>
+      <td class="c"><span class="rend-editable" onclick="rendStartEdit(${r.id},'pct',this,true)"><span ${rendPctClass(r.pct)}>${r.pct}%</span></span></td>
+      <td class="c"><span class="rend-editable" onclick="rendStartLiqEdit(${r.id},this)">${rendLiqBadge(r.liquidez)}</span></td>
+      <td class="r">
+        <div class="rend-bar-wrap">
+          <div class="rend-bar-bg"><div class="rend-bar-fill" style="width:${barW}%;background:${color}"></div></div>
+          <span class="rend-editable" onclick="rendStartEdit(${r.id},'actual',this,true)"
+            style="min-width:80px;display:inline-block;text-align:right;font-weight:600;">${rendFmt(r.actual)}</span>
+        </div>
+      </td>
+      <td class="r rend-calc">${r.pct>0?rendFmt(rd):'—'}</td>
+      <td class="r rend-calc">${r.pct>0?rendFmt(rm):'—'}</td>
+      <td class="r rend-calc">${r.pct>0?rendFmt(ra):'—'}</td>
+      <td><button class="btn-rend-del" onclick="rendDelRow(${r.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+  const tA=rendRows.reduce((s,r)=>s+r.actual,0);
+  const tD=rendRows.reduce((s,r)=>s+rendRD(r),0);
+  const tM=rendRows.reduce((s,r)=>s+rendRM(r),0);
+  const tAn=rendRows.reduce((s,r)=>s+rendRA(r),0);
+  ['rendFActual','rendFDiario','rendFMensual','rendFAnual'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(el) el.textContent=rendFmt([tA,tD,tM,tAn][i]);
+  });
+  ['rendKpiTotal','rendKpiDiario','rendKpiMensual','rendKpiAnual'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(el) el.textContent=rendFmt([tA,tD,tM,tAn][i]);
+  });
+}
+
+function initRendRows(){
+  if(rendRows.length>0) return;
+  rendRows=[
+    {id:1, nombre:'Nu Cajita Turbo',      montoMax:25000,   pct:13,  liquidez:'Diario',   actual:26879.36},
+    {id:2, nombre:'Nu Cajita A La Vista', montoMax:0,       pct:0,   liquidez:'Diario',   actual:0},
+    {id:3, nombre:'Nu Cajita Congelado',  montoMax:0,       pct:6.8, liquidez:'6 meses',  actual:0},
+    {id:4, nombre:'DidiCuenta promo',     montoMax:10000,   pct:15,  liquidez:'Diario',   actual:10000},
+    {id:5, nombre:'DidiCuenta ahorro',    montoMax:0,       pct:7.5, liquidez:'3 meses',  actual:135000},
+    {id:6, nombre:'Mifel',               montoMax:500000,  pct:10,  liquidez:'Diario',   actual:200000},
+    {id:7, nombre:'Openbank Promo',      montoMax:30000,   pct:13,  liquidez:'Diario',   actual:30000},
+    {id:8, nombre:'Openbank ahorro',     montoMax:1000000, pct:7,   liquidez:'Diario',   actual:0},
+    {id:9, nombre:'Plata Ahorro Ultra',  montoMax:25000,   pct:15,  liquidez:'2 meses',  actual:25000},
+    {id:10,nombre:'Plata Ahorro Fijo 1', montoMax:0,       pct:9.5, liquidez:'6 meses',  actual:26000},
+    {id:11,nombre:'Plata Ahorro Fijo 2', montoMax:0,       pct:11,  liquidez:'12 meses', actual:251818.16},
+    {id:12,nombre:'Plata Ahorro Flexible',montoMax:0,      pct:9,   liquidez:'Diario',   actual:0},
+    {id:13,nombre:'Plata A La Vista',    montoMax:0,       pct:7,   liquidez:'Diario',   actual:0},
+  ];
+  rendNextId=20;
 }
 
 function renderInsights(){
@@ -1674,7 +1883,8 @@ function renderInsights(){
 }
 
 function renderAhorrosAll(){
-  renderSummary(); renderTable(); renderDistribution(); renderSavChart(); renderFintechDetail(); renderInsights();
+  renderSummary(); renderTable(); renderDistribution(); renderSavChart();
+  initRendRows(); renderFintechDetail();
 }
 
 /* ══════════════════════════════
