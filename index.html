@@ -713,6 +713,14 @@ td input::placeholder{color:var(--border);}
   </div>
 </div>
 <div id="syncSpinner"></div>
+<!-- Migration bar -->
+<div id="migrateBar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1a2235;border-top:1px solid #f59e0b;padding:.75rem 1.5rem;align-items:center;justify-content:space-between;gap:1rem;">
+  <span style="font-size:.85rem;color:#f1f5f9;">⚠️ Detectamos datos anteriores en tu cuenta. ¿Quieres importarlos?</span>
+  <div style="display:flex;gap:.75rem;">
+    <button id="btnMigrate" onclick="migrateFromOldUID()" style="background:#f59e0b;color:#0f0e0b;border:none;border-radius:8px;padding:.5rem 1.2rem;font-weight:700;cursor:pointer;font-family:'Roboto',sans-serif;font-size:.85rem;">Migrar datos</button>
+    <button onclick="document.getElementById('migrateBar').style.display='none'" style="background:transparent;border:1px solid #1e2d45;color:#64748b;border-radius:8px;padding:.5rem 1rem;cursor:pointer;font-family:'Roboto',sans-serif;font-size:.85rem;">Ignorar</button>
+  </div>
+</div>
 
 
 
@@ -1189,9 +1197,46 @@ auth.onAuthStateChanged(async function(user){
 });
 
 // ─── Load all data from Firestore on login ───
+// ─── One-time migration from old UID ───
+const OLD_UID = 'Zp3dglO9u1RPhly8oFeQ9JwWLKd2';
+async function migrateFromOldUID(){
+  if(!currentUser || currentUser.uid === OLD_UID) return;
+  var btn = document.getElementById('btnMigrate');
+  if(btn){ btn.disabled=true; btn.textContent='Migrando...'; }
+  try{
+    var oldRef = function(col,docId){
+      return db.collection('users').doc(OLD_UID).collection(col).doc(docId);
+    };
+    var cols = [['config','fintechs'],['ahorros','data'],['gastos','data'],['gastos','catalog']];
+    for(var i=0;i<cols.length;i++){
+      var s = await oldRef(cols[i][0],cols[i][1]).get();
+      if(s.exists){ await uref(cols[i][0],cols[i][1]).set(s.data()); }
+    }
+    showToast('¡Datos migrados correctamente!','info');
+    document.getElementById('migrateBar').style.display='none';
+    await initAppData();
+  } catch(e){
+    console.error('Migration error:',e);
+    showToast('Error en migración: '+e.message,'warn');
+    if(btn){ btn.disabled=false; btn.textContent='Migrar datos'; }
+  }
+}
+
 async function initAppData(){
   setSyncing(true);
   showToast('Cargando datos...','info');
+
+  // Show migration bar if this user has no ahorros data but old UID does
+  try{
+    var checkAh = await fsGet('ahorros','data');
+    if(!checkAh || !checkAh.rows || checkAh.rows.every(function(r){
+      return Object.keys(r).filter(function(k){return k!=='month';}).every(function(k){return !r[k];});
+    })){
+      var oldCheck = await db.collection('users').doc(OLD_UID).collection('ahorros').doc('data').get();
+      if(oldCheck.exists){ document.getElementById('migrateBar').style.display='flex'; }
+    }
+  } catch(e){}
+
   try{
     // Fintech config
     var ft=await fsGet('config','fintechs');
