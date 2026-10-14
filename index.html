@@ -2847,7 +2847,7 @@ function openSvModal(si){
       +(sv&&sv.icono===ic?' class="sv-ico-sel" style="border-color:var(--accent)!important;"':'')+'>'+ic+'</button>';
   }).join('');
   overlay.innerHTML='<div class="modal" style="max-width:420px;">'
-    +'<button class="modal-close" onclick="document.getElementById('svModal').remove()">✕</button>'
+    +'<button class="modal-close" onclick="document.getElementById(&quot;svModal&quot;).remove()">✕</button>'
     +'<div class="modal-title">'+(sv?'Editar Servicio':'Nuevo Servicio')+'</div>'
     +'<div class="field" style="margin-bottom:.8rem;"><label>Nombre</label>'
     +'<input type="text" id="svNombre" value="'+(sv?sv.nombre:'')+'" placeholder="Ej: Agua, Luz..."></div>'
@@ -2857,7 +2857,7 @@ function openSvModal(si){
     +'<div class="field" style="margin-bottom:1rem;"><label>Color del acento</label>'
     +'<input type="color" id="svColor" value="'+(sv?sv.color:'#f59e0b')+'" style="width:100%;height:36px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:transparent;"></div>'
     +'<div class="modal-actions">'
-    +'<button class="btn-secondary" onclick="document.getElementById('svModal').remove()">Cancelar</button>'
+    +'<button class="btn-secondary" onclick="document.getElementById(&quot;svModal&quot;).remove()">Cancelar</button>'
     +'<button class="btn-primary" onclick="saveSvModal('+(si!==null?si:'null')+')">Guardar</button>'
     +'</div></div>';
   overlay.addEventListener('click',function(e){ if(e.target===overlay) overlay.remove(); });
@@ -3002,7 +3002,7 @@ function openCoModal(ci){
   }).join('');
   var overlay=document.createElement('div'); overlay.id='coModal'; overlay.className='modal-overlay open';
   overlay.innerHTML='<div class="modal" style="max-width:420px;">'
-    +'<button class="modal-close" onclick="document.getElementById('coModal').remove()">✕</button>'
+    +'<button class="modal-close" onclick="document.getElementById(&quot;coModal&quot;).remove()">✕</button>'
     +'<div class="modal-title">'+(co?'Editar Gasto':'Nuevo Gasto')+'</div>'
     +'<div class="field" style="margin-bottom:.8rem;"><label>Nombre</label>'
     +'<input type="text" id="coNombre" value="'+(co?co.nombre:'')+'" placeholder="Ej: Cambio de aceite..."></div>'
@@ -3012,7 +3012,7 @@ function openCoModal(ci){
     +'<div id="coIcoWrap" style="display:flex;flex-wrap:wrap;gap:.3rem;">'+icoHtml+'</div>'
     +'<input type="hidden" id="coIcoVal" value="'+(co?co.icono:'🚗')+'"></div>'
     +'<div class="modal-actions">'
-    +'<button class="btn-secondary" onclick="document.getElementById('coModal').remove()">Cancelar</button>'
+    +'<button class="btn-secondary" onclick="document.getElementById(&quot;coModal&quot;).remove()">Cancelar</button>'
     +'<button class="btn-primary" onclick="saveCoModal('+(ci!==null?ci:'null')+')">Guardar</button>'
     +'</div></div>';
   overlay.addEventListener('click',function(e){ if(e.target===overlay) overlay.remove(); });
@@ -3081,8 +3081,8 @@ function renderSatAdi(){
       +'<div class="sat-card-header">'
       +'<div class="sat-card-name" style="color:var(--accent);">📅 Año '+d.año+(d.periodo?' — '+d.periodo:'')+'</div>'
       +'<div style="display:flex;gap:.4rem;">'
-      +'<button class="btn-icon edit" onclick="editSatModal('adi',this.dataset.id)" data-id="'+d.id+'">✏️</button>'
-      +'<button class="btn-icon del" onclick="deleteSatDec('adi',this.dataset.id)" data-id="'+d.id+'">🗑</button>'
+      +'<button class="btn-icon edit" onclick="editSatModal(\'adi\',,this.dataset.id)" data-id="'+d.id+'">✏️</button>'
+      +'<button class="btn-icon del" onclick="deleteSatDec(\'adi\',,this.dataset.id)" data-id="'+d.id+'">🗑</button>'
       +'</div></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;font-size:.78rem;margin-bottom:.5rem;">'
       +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">INGRESOS</div><div style="font-weight:700;">'+fmtMXN(d.ingresos||0)+'</div></div>'
@@ -3112,8 +3112,8 @@ function renderSatThreadfin(){
       +'<div class="sat-card-header">'
       +'<div class="sat-card-name" style="color:var(--accent4);">🗓 '+d.mes+' '+d.año+'</div>'
       +'<div style="display:flex;gap:.4rem;">'
-      +'<button class="btn-icon edit" onclick="editSatModal('threadfin',this.dataset.id)" data-id="'+d.id+'">✏️</button>'
-      +'<button class="btn-icon del" onclick="deleteSatDec('threadfin',this.dataset.id)" data-id="'+d.id+'">🗑</button>'
+      +'<button class="btn-icon edit" onclick="editSatModal(\'threadfin\',,this.dataset.id)" data-id="'+d.id+'">✏️</button>'
+      +'<button class="btn-icon del" onclick="deleteSatDec(\'threadfin\',,this.dataset.id)" data-id="'+d.id+'">🗑</button>'
       +'</div></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;font-size:.78rem;">'
       +'<div><div style="color:var(--muted);font-size:.68rem;margin-bottom:.2rem;">INGRESOS</div><div style="font-weight:700;">'+fmtMXN(d.ingresos||0)+'</div></div>'
@@ -3148,7 +3148,7 @@ function openSatModal(tipo, d){
   var mesOpts=SAT_MESES.map(function(m){ return '<option value="'+m+'" '+(d&&d.mes===m?'selected':'')+'>'+m+'</option>'; }).join('');
   var estadoOpts=['Pagado','Pendiente','Saldo a favor'].map(function(e){ return '<option value="'+e+'" '+(d&&d.pagado===e?'selected':'')+'>'+e+'</option>'; }).join('');
   overlay.innerHTML='<div class="modal" style="max-width:460px;">'
-    +'<button class="modal-close" onclick="document.getElementById('satModal').remove()">✕</button>'
+    +'<button class="modal-close" onclick="document.getElementById(&quot;satModal&quot;).remove()">✕</button>'
     +'<div class="modal-title">'+(d?'Editar':'Nueva')+' Declaración — '+(isAdi?'ADI Anual':'Threadfin Mensual')+'</div>'
     +'<div class="sat-grid">'
     +'<div class="sat-field"><label>Año</label><select id="satYear">'+yearOpts+'</select></div>'
@@ -3161,7 +3161,7 @@ function openSatModal(tipo, d){
     +'<div class="sat-field"><label>No. Acuse</label><input type="text" id="satAcuse" value="'+(d&&d.acuse?d.acuse:'')+'" placeholder="Ej: ABC123456"></div>'
     +'</div>'
     +'<div class="modal-actions">'
-    +'<button class="btn-secondary" onclick="document.getElementById('satModal').remove()">Cancelar</button>'
+    +'<button class="btn-secondary" onclick="document.getElementById(&quot;satModal&quot;).remove()">Cancelar</button>'
     +'<button class="btn-primary" onclick="saveSatModal(this.dataset.tipo,this.dataset.eid)" data-tipo="'+tipo+'" data-eid="'+(d?d.id:'')+'">Guardar</button>'
     +'</div></div>';
   overlay.addEventListener('click',function(e){ if(e.target===overlay) overlay.remove(); });
