@@ -566,7 +566,7 @@ td input::placeholder{color:var(--border);}
   .login-card{padding:1.8rem 1.3rem;}
   .login-logo{font-size:2rem;}
   .login-tagline{font-size:.82rem;}
-  .btn-google{padding:.78rem 1.2rem;font-size:.86rem;}
+  .btn-login{padding:.78rem 1.2rem;font-size:.86rem;}
 }
 
 /* ══════════════════════════════════════
@@ -596,16 +596,24 @@ td input::placeholder{color:var(--border);}
 .login-logo{font-size:2.6rem;font-weight:900;letter-spacing:-.03em;margin-bottom:.4rem;}
 .login-logo span{color:var(--accent);}
 .login-tagline{color:var(--muted);font-size:.88rem;margin-bottom:2.2rem;line-height:1.5;}
-.btn-google{
-  display:flex;align-items:center;justify-content:center;gap:.75rem;
-  background:#fff;color:#1f1f1f;border:none;border-radius:10px;
-  padding:.85rem 1.5rem;width:100%;font-size:.9rem;font-weight:600;
-  font-family:'Roboto',sans-serif;cursor:pointer;
-  box-shadow:0 2px 8px rgba(0,0,0,.3);transition:box-shadow .2s,transform .15s;
+.login-field{display:flex;flex-direction:column;gap:.4rem;text-align:left;margin-bottom:1rem;}
+.login-field label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;}
+.login-field input{
+  background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  padding:.72rem 1rem;color:var(--text);font-family:'Roboto',sans-serif;font-size:.9rem;
+  outline:none;transition:border-color .2s;width:100%;box-sizing:border-box;
 }
-.btn-google:hover{box-shadow:0 4px 18px rgba(0,0,0,.45);transform:translateY(-1px);}
-.btn-google img{width:20px;height:20px;}
-.login-note{font-size:.7rem;color:var(--muted);margin-top:1.4rem;line-height:1.6;}
+.login-field input:focus{border-color:var(--accent);}
+.btn-login{
+  display:flex;align-items:center;justify-content:center;gap:.75rem;
+  background:var(--accent);color:#0f0e0b;border:none;border-radius:10px;
+  padding:.85rem 1.5rem;width:100%;font-size:.9rem;font-weight:700;
+  font-family:'Roboto',sans-serif;cursor:pointer;margin-top:.4rem;
+  transition:opacity .15s,transform .15s;
+}
+.btn-login:hover{opacity:.9;transform:translateY(-1px);}
+.login-note{font-size:.7rem;color:var(--muted);margin-top:1.2rem;line-height:1.6;}
+.login-error{color:#f87171;font-size:.78rem;margin-top:.5rem;display:none;text-align:center;}
 /* user chip in topbar */
 #userChip{display:flex;align-items:center;gap:.55rem;}
 #userAvatar{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);}
@@ -674,10 +682,16 @@ td input::placeholder{color:var(--border);}
   <div class="login-card">
     <div class="login-logo">Mis <span>Finanzas</span></div>
     <div class="login-tagline">Dashboard financiero personal.<br>Sincronizado en todos tus dispositivos.</div>
-    <button class="btn-google" id="btnGoogleLogin">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
-      Continuar con Google
-    </button>
+    <div class="login-field">
+      <label>Correo electrónico</label>
+      <input type="email" id="loginEmail" placeholder="correo@ejemplo.com" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <button class="btn-login" id="btnEmailLogin">Iniciar sesión</button>
     <div class="login-note">Solo tú puedes acceder a tus datos.</div>
   </div>
 </div>
@@ -727,7 +741,6 @@ td input::placeholder{color:var(--border);}
     </div>
     <!-- User -->
     <div id="userChip" style="display:none;">
-      <img id="userAvatar" src="" alt="">
       <span id="userEmail"></span>
       <button id="btnLogout">Salir</button>
     </div>
@@ -1088,29 +1101,37 @@ function setSyncing(on){
   document.getElementById('syncSpinner').style.display=on?'block':'none';
 }
 
-// ─── Auth UI ───
-document.getElementById('btnGoogleLogin').addEventListener('click',async function(){
+// ─── Auth UI (email/password) ───
+function showLoginError(msg){
+  var el=document.getElementById('loginError');
+  el.textContent=msg; el.style.display=msg?'block':'none';
+}
+
+async function doEmailLogin(){
+  var email    = document.getElementById('loginEmail').value.trim();
+  var password = document.getElementById('loginPassword').value;
+  showLoginError('');
+  if(!email||!password){ showLoginError('Ingresa correo y contraseña.'); return; }
   try{
-    var provider = new firebase.auth.GoogleAuthProvider();
-    // Use redirect on mobile (Safari/iOS blocks popups), popup on desktop
-    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if(isMobile){
-      await auth.signInWithRedirect(provider);
-    } else {
-      await auth.signInWithPopup(provider);
-    }
-  } catch(e){ showToast('Error: '+e.message,'warn'); }
+    document.getElementById('btnEmailLogin').disabled=true;
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch(e){
+    var msg = 'Error al iniciar sesión.';
+    if(e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')
+      msg='Correo o contraseña incorrectos.';
+    else if(e.code==='auth/invalid-email') msg='Correo inválido.';
+    else if(e.code==='auth/too-many-requests') msg='Demasiados intentos. Intenta más tarde.';
+    showLoginError(msg);
+  } finally{
+    document.getElementById('btnEmailLogin').disabled=false;
+  }
+}
+
+document.getElementById('btnEmailLogin').addEventListener('click', doEmailLogin);
+document.getElementById('loginPassword').addEventListener('keydown',function(e){
+  if(e.key==='Enter') doEmailLogin();
 });
 
-// Handle redirect result on page load (for mobile flow)
-auth.getRedirectResult().then(function(result){
-  // result.user will be handled by onAuthStateChanged below
-}).catch(function(e){
-  if(e.code && e.code !== 'auth/no-current-user'){
-    showToast('Error al iniciar sesión','warn');
-    console.error(e);
-  }
-});
 document.getElementById('btnLogout').addEventListener('click',async function(){
   if(!confirm('¿Cerrar sesión?')) return;
   await auth.signOut();
@@ -1121,7 +1142,6 @@ auth.onAuthStateChanged(async function(user){
     currentUser=user;
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('userChip').style.display='flex';
-    document.getElementById('userAvatar').src=user.photoURL||'';
     document.getElementById('userEmail').textContent=user.email;
     await initAppData();
   } else {
