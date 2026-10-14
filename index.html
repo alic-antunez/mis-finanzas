@@ -1198,7 +1198,7 @@ auth.onAuthStateChanged(async function(user){
 
 // ─── Load all data from Firestore on login ───
 // ─── One-time migration from old UID ───
-const OLD_UID = 'Zp3dglO9u1RPhly8oFeQ9JwWLKd2';
+const OLD_UID = 'Zp3dgl09u1RPhly8oFeQ9JwWLKd2';
 async function migrateFromOldUID(){
   if(!currentUser || currentUser.uid === OLD_UID) return;
   var btn = document.getElementById('btnMigrate');
