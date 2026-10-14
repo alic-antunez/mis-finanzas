@@ -682,16 +682,18 @@ td input::placeholder{color:var(--border);}
   <div class="login-card">
     <div class="login-logo">Mis <span>Finanzas</span></div>
     <div class="login-tagline">Dashboard financiero personal.<br>Sincronizado en todos tus dispositivos.</div>
-    <div class="login-field">
-      <label>Correo electrónico</label>
-      <input type="email" id="loginEmail" placeholder="correo@ejemplo.com" autocomplete="username">
-    </div>
-    <div class="login-field">
-      <label>Contraseña</label>
-      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <div class="login-error" id="loginError"></div>
-    <button class="btn-login" id="btnEmailLogin">Iniciar sesión</button>
+    <form id="loginForm" autocomplete="on" onsubmit="event.preventDefault(); doEmailLogin();">
+      <div class="login-field">
+        <label>Correo electrónico</label>
+        <input type="email" id="loginEmail" name="email" placeholder="correo@ejemplo.com" autocomplete="email">
+      </div>
+      <div class="login-field">
+        <label>Contraseña</label>
+        <input type="password" id="loginPassword" name="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button type="submit" class="btn-login" id="btnEmailLogin">Iniciar sesión</button>
+    </form>
     <div class="login-note">Solo tú puedes acceder a tus datos.</div>
   </div>
 </div>
